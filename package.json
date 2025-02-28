@@ -1,7 +1,7 @@
 {
-  "name": "social-media-preview-generator",
+  "name": "landing-page-analysis-tool",
   "version": "1.0.0",
-  "description": "A tool to generate social media share previews using Cloudflare's Browser Rendering API and Groq's API",
+  "description": "A tool to analyze competitor landing pages using Cloudflare's Browser Rendering API and Groq's API",
   "main": "index.js",
   "scripts": {
     "dev": "wrangler pages dev public --functions-dir functions --compatibility-flag=nodejs_compat",
@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@cloudflare/ai": "^1.0.36",
-    "cf-request-maker": "^1.2.2"
+    "@cloudflare/mcp-server-cloudflare": "^0.1.7",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "wrangler": "^3.22.1"

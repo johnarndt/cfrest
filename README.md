@@ -9,6 +9,7 @@ A Cloudflare Pages-based tool that generates social media share previews for any
 - Generate SEO-optimized titles, descriptions, and hashtags using Groq's AI
 - Modern, responsive UI with platform-specific preview cards
 - Copy and download functionalities for easy sharing
+- MCP server integration for AI assistant access (Claude, Cursor, etc.)
 
 ## Prerequisites
 
@@ -16,6 +17,7 @@ A Cloudflare Pages-based tool that generates social media share previews for any
 2. A Groq account with an API key
 3. Node.js and npm installed on your machine
 4. Wrangler CLI (Cloudflare's command-line tool)
+5. (Optional) Claude Desktop or another MCP-compatible client for AI assistant integration
 
 ## Setup Instructions
 
@@ -80,6 +82,67 @@ To deploy directly from your local machine:
 3. Wait for the previews to generate (this may take a few seconds)
 4. Switch between Twitter, LinkedIn, and Facebook tabs to see the different previews
 5. Copy the text or download the images for each platform
+
+## MCP Server Integration
+
+This project includes Model Context Protocol (MCP) server integrations that allow AI assistants like Claude to interact directly with your Cloudflare resources and Groq models:
+
+### Cloudflare MCP Server
+
+The Cloudflare MCP Server allows Claude or other MCP clients to:
+- Deploy and manage your Cloudflare Workers
+- Interact with KV stores, R2 buckets, and D1 databases
+- Fetch analytics data for your domain
+- Manage all aspects of your Cloudflare resources using natural language
+
+#### Setup:
+
+1. The servers are already configured in this project. If you need to reinstall:
+   ```
+   npm install @cloudflare/mcp-server-cloudflare
+   npx @cloudflare/mcp-server-cloudflare init
+   ```
+
+2. The MCP server configuration is stored in:
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+
+### Groq Integration
+
+This project also includes an MCP server for interacting with Groq's AI models:
+
+1. The Groq MCP server allows Claude to communicate with Groq's LLMs, enabling:
+   - Multi-model conversations between different AI systems
+   - Direct access to specialized Groq models like `llama-3.1-70b-versatile`
+   - Parallel processing with both Claude and Groq models
+
+2. Before using, update your Groq API key in the Claude Desktop configuration file:
+   ```json
+   "chat-groq": {
+     "env": {
+       "AI_CHAT_KEY": "YOUR_ACTUAL_GROQ_API_KEY",
+       ...
+     }
+   }
+   ```
+
+### Using MCP Servers
+
+1. Install Claude Desktop from [claude.ai/download](https://claude.ai/download)
+2. Start Claude Desktop - you should see tool icons for both Cloudflare and Groq integrations
+3. You can now ask Claude to:
+   - "Deploy a new Worker for my social media preview generator"
+   - "Check the analytics for my Cloudflare Pages site"
+   - "Use Groq to generate optimized social media descriptions for my site"
+
+For development without Claude Desktop, you can run the MCP servers directly:
+```
+# For Cloudflare MCP Server
+node ./node_modules/@cloudflare/mcp-server-cloudflare/dist/index.js run YOUR_ACCOUNT_ID
+
+# For Groq MCP Server
+node ./any-chat-completions-mcp/build/index.js
+```
 
 ## Project Structure
 

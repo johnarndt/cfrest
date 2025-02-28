@@ -1,5 +1,5 @@
 # Name of your Cloudflare Pages project
-name = "social-media-preview-generator"
+name = "landing-page-analysis-tool"
 
 # Main directory that Cloudflare Pages will deploy
 site = { bucket = "./public" }
@@ -29,3 +29,4 @@ compatibility_flags = ["nodejs_compat"]
 "/generateSEO" = { type = "function", function = "generateSEO" }
 "/storeScreenshot" = { type = "function", function = "storeScreenshot" }
 "/getScreenshot/*" = { type = "function", function = "getScreenshot" }
+"/analyzeContent" = { type = "function", function = "analyzeContent" }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Social Media Preview Generator</title>
+  <title>Competitor Landing Page Analysis Tool</title>
   <link rel="stylesheet" href="css/styles.css">
   <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -11,18 +11,18 @@
 <body>
   <div class="container">
     <header>
-      <h1>Social Media Preview Generator</h1>
-      <p>Generate optimized social media previews with Cloudflare and Groq</p>
+      <h1>Competitor Landing Page Analysis</h1>
+      <p>Analyze competitor landing pages and get actionable recommendations</p>
     </header>
 
     <section class="url-input">
       <div class="input-group">
-        <input type="url" id="url-input" placeholder="Enter any URL to generate previews" required>
-        <button id="generate-btn">Generate Previews</button>
+        <input type="url" id="url-input" placeholder="Enter competitor landing page URL" required>
+        <button id="analyze-btn">Analyze Page</button>
       </div>
       <div id="loading" style="display: none;">
         <div class="spinner"></div>
-        <p>Generating previews... This may take a moment.</p>
+        <p>Analyzing page... This may take a moment.</p>
       </div>
     </section>
 
@@ -30,136 +30,75 @@
       <p id="error-text">Error message will appear here</p>
     </div>
 
-    <section id="preview-container" style="display: none;">
+    <section id="results-container" style="display: none;">
       <div class="tabs">
-        <button class="tab-btn" data-platform="twitter">
-          <i class="fab fa-twitter"></i> Twitter
+        <button class="tab-btn active" data-tab="screenshot">
+          <i class="fas fa-image"></i> Screenshot
         </button>
-        <button class="tab-btn" data-platform="linkedin">
-          <i class="fab fa-linkedin"></i> LinkedIn
+        <button class="tab-btn" data-tab="value-props">
+          <i class="fas fa-bullseye"></i> Value Propositions
         </button>
-        <button class="tab-btn" data-platform="facebook">
-          <i class="fab fa-facebook"></i> Facebook
+        <button class="tab-btn" data-tab="tone">
+          <i class="fas fa-comment-alt"></i> Tone Analysis
+        </button>
+        <button class="tab-btn" data-tab="strengths">
+          <i class="fas fa-award"></i> Strengths
+        </button>
+        <button class="tab-btn" data-tab="recommendations">
+          <i class="fas fa-lightbulb"></i> Recommendations
         </button>
       </div>
 
-      <div class="preview-content">
-        <!-- Twitter Preview -->
-        <div class="platform-preview active" id="twitter-preview">
-          <h2>Twitter Preview</h2>
-          <div class="preview-card twitter-card">
-            <div class="preview-image">
-              <img id="twitter-image" src="" alt="Twitter preview image">
-            </div>
-            <div class="preview-text">
-              <h3 id="twitter-title">Title will appear here</h3>
-              <p id="twitter-description">Description will appear here</p>
-              <p class="preview-url" id="twitter-url">domain.com</p>
-            </div>
+      <div class="tab-content">
+        <!-- Screenshot Tab -->
+        <div class="tab-pane active" id="screenshot-tab">
+          <h2>Landing Page Screenshot</h2>
+          <div class="screenshot-container">
+            <img id="page-screenshot" src="" alt="Landing page screenshot">
           </div>
           <div class="action-buttons">
-            <button class="action-btn copy-btn" onclick="copyText('twitter')">
-              <i class="fas fa-copy"></i> Copy Text
-            </button>
-            <button class="action-btn download-btn" onclick="downloadImage('twitter')" disabled>
-              <i class="fas fa-download"></i> Download Image
+            <button id="download-screenshot" class="action-btn">
+              <i class="fas fa-download"></i> Download Screenshot
             </button>
           </div>
-          <div class="preview-seo">
-            <h3>Generated SEO Content</h3>
-            <div class="seo-content" id="twitter-seo">
-              <div class="seo-item">
-                <h4>Title:</h4>
-                <p id="twitter-seo-title">SEO title will appear here</p>
-              </div>
-              <div class="seo-item">
-                <h4>Description:</h4>
-                <p id="twitter-seo-description">SEO description will appear here</p>
-              </div>
-              <div class="seo-item">
-                <h4>Hashtags:</h4>
-                <p id="twitter-seo-hashtags">SEO hashtags will appear here</p>
-              </div>
+        </div>
+
+        <!-- Value Propositions Tab -->
+        <div class="tab-pane" id="value-props-tab">
+          <h2>Value Propositions</h2>
+          <div class="analysis-content">
+            <div id="value-props-content">
+              <!-- Content will be added dynamically -->
             </div>
           </div>
         </div>
 
-        <!-- LinkedIn Preview -->
-        <div class="platform-preview" id="linkedin-preview">
-          <h2>LinkedIn Preview</h2>
-          <div class="preview-card linkedin-card">
-            <div class="preview-image">
-              <img id="linkedin-image" src="" alt="LinkedIn preview image">
-            </div>
-            <div class="preview-text">
-              <h3 id="linkedin-title">Title will appear here</h3>
-              <p id="linkedin-description">Description will appear here</p>
-              <p class="preview-url" id="linkedin-url">domain.com</p>
-            </div>
-          </div>
-          <div class="action-buttons">
-            <button class="action-btn copy-btn" onclick="copyText('linkedin')">
-              <i class="fas fa-copy"></i> Copy Text
-            </button>
-            <button class="action-btn download-btn" onclick="downloadImage('linkedin')" disabled>
-              <i class="fas fa-download"></i> Download Image
-            </button>
-          </div>
-          <div class="preview-seo">
-            <h3>Generated SEO Content</h3>
-            <div class="seo-content" id="linkedin-seo">
-              <div class="seo-item">
-                <h4>Title:</h4>
-                <p id="linkedin-seo-title">SEO title will appear here</p>
-              </div>
-              <div class="seo-item">
-                <h4>Description:</h4>
-                <p id="linkedin-seo-description">SEO description will appear here</p>
-              </div>
-              <div class="seo-item">
-                <h4>Hashtags:</h4>
-                <p id="linkedin-seo-hashtags">SEO hashtags will appear here</p>
-              </div>
+        <!-- Tone Analysis Tab -->
+        <div class="tab-pane" id="tone-tab">
+          <h2>Tone Analysis</h2>
+          <div class="analysis-content">
+            <div id="tone-content">
+              <!-- Content will be added dynamically -->
             </div>
           </div>
         </div>
 
-        <!-- Facebook Preview -->
-        <div class="platform-preview" id="facebook-preview">
-          <h2>Facebook Preview</h2>
-          <div class="preview-card facebook-card">
-            <div class="preview-image">
-              <img id="facebook-image" src="" alt="Facebook preview image">
-            </div>
-            <div class="preview-text">
-              <h3 id="facebook-title">Title will appear here</h3>
-              <p id="facebook-description">Description will appear here</p>
-              <p class="preview-url" id="facebook-url">domain.com</p>
+        <!-- Strengths Tab -->
+        <div class="tab-pane" id="strengths-tab">
+          <h2>Page Strengths</h2>
+          <div class="analysis-content">
+            <div id="strengths-content">
+              <!-- Content will be added dynamically -->
             </div>
           </div>
-          <div class="action-buttons">
-            <button class="action-btn copy-btn" onclick="copyText('facebook')">
-              <i class="fas fa-copy"></i> Copy Text
-            </button>
-            <button class="action-btn download-btn" onclick="downloadImage('facebook')" disabled>
-              <i class="fas fa-download"></i> Download Image
-            </button>
-          </div>
-          <div class="preview-seo">
-            <h3>Generated SEO Content</h3>
-            <div class="seo-content" id="facebook-seo">
-              <div class="seo-item">
-                <h4>Title:</h4>
-                <p id="facebook-seo-title">SEO title will appear here</p>
-              </div>
-              <div class="seo-item">
-                <h4>Description:</h4>
-                <p id="facebook-seo-description">SEO description will appear here</p>
-              </div>
-              <div class="seo-item">
-                <h4>Hashtags:</h4>
-                <p id="facebook-seo-hashtags">SEO hashtags will appear here</p>
-              </div>
+        </div>
+
+        <!-- Recommendations Tab -->
+        <div class="tab-pane" id="recommendations-tab">
+          <h2>Actionable Recommendations</h2>
+          <div class="analysis-content">
+            <div id="recommendations-content">
+              <!-- Content will be added dynamically -->
             </div>
           </div>
         </div>
@@ -176,9 +115,9 @@
       console.log('Window fully loaded');
       
       // Test direct click handler
-      const testBtn = document.getElementById('generate-btn');
+      const testBtn = document.getElementById('analyze-btn');
       if (testBtn) {
-        console.log('Generate button found in load event');
+        console.log('Analyze button found in load event');
         
         // Add a secondary click monitor
         testBtn.addEventListener('click', function() {
@@ -201,7 +140,7 @@
         console.error('Button not found in load event!');
         
         // Try querying with querySelector
-        const altBtn = document.querySelector('#generate-btn');
+        const altBtn = document.querySelector('#analyze-btn');
         console.log('Alternative button query result:', altBtn);
       }
     });
