@@ -1,18 +1,24 @@
 # Cloudflare Pages configuration
-name = "cfrest-johnarndt"
-main = "public/index.html"
+name = "cfrest"
 compatibility_date = "2023-08-01"
 
 [build]
 command = ""
 output_dir = "public"
-publish_dir = "public"
 
 [site]
 bucket = "./public"
 
-# Define environment variables 
+# Define environment variables for Functions
 [vars]
-# Will be set in Cloudflare dashboard
+# These should be set in the Cloudflare dashboard
 # CLOUDFLARE_API_TOKEN = "your-api-token"
 # CLOUDFLARE_ACCOUNT_ID = "your-account-id"
+
+# Set up proper binding for Pages Functions
+[env.production]
+workers_dev = true
+
+# Configure functions directory
+[functions]
+directory = "functions"
