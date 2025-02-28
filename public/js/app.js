@@ -29,6 +29,28 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('test-env-btn').addEventListener('click', function() {
         testEnvironment();
     });
+    
+    // Add analyze website button functionality
+    document.getElementById('analyze-website-btn').addEventListener('click', function() {
+        const url = document.getElementById('screenshotUrl').value;
+        if (url) {
+            analyzeWebsite(url);
+        } else {
+            showFlashMessage('Please enter a URL to analyze', 'error');
+        }
+    });
+    
+    // Add analyze button functionality to results
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('analyze-btn')) {
+            const resultId = e.target.getAttribute('data-result-id');
+            const results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
+            const result = results[resultId];
+            if (result) {
+                analyzeWebsite(result.url, resultId);
+            }
+        }
+    });
 });
 
 // Flash message helper
@@ -378,66 +400,163 @@ function escapeHtml(unsafe) {
 
 // Save result to localStorage
 function saveResult(result) {
-    const results = JSON.parse(localStorage.getItem('cfRestResults') || '[]');
+    let results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
     results.push(result);
-    localStorage.setItem('cfRestResults', JSON.stringify(results));
+    localStorage.setItem('capturedResults', JSON.stringify(results));
+}
+
+// Analyze website using Groq AI
+async function analyzeWebsite(url, resultId) {
+    if (!url) {
+        showFlashMessage('No URL to analyze', 'error');
+        return;
+    }
+
+    try {
+        // Show loading
+        showFlashMessage('Analyzing website with Groq AI...', 'info');
+        
+        // Call the API
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                url: url
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+        }
+        
+        // Get the JSON response
+        const analysisData = await response.json();
+        
+        // Extract the analysis text
+        const analysisText = analysisData.choices[0].message.content;
+        
+        // Update the results with analysis
+        updateResultWithAnalysis(resultId, analysisText);
+        
+        // Show success message
+        showFlashMessage(`Analysis of ${url} completed!`, 'success');
+        
+    } catch (error) {
+        showFlashMessage(`Error analyzing website: ${error.message}`, 'error');
+        console.error(error);
+    }
+}
+
+// Update result with analysis
+function updateResultWithAnalysis(resultId, analysisText) {
+    let results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
+    if (results[resultId]) {
+        results[resultId].analysis = analysisText;
+        localStorage.setItem('capturedResults', JSON.stringify(results));
+        loadSavedResults(); // Refresh the UI
+    }
 }
 
 // Load results from localStorage
 function loadSavedResults() {
-    const results = JSON.parse(localStorage.getItem('cfRestResults') || '[]');
-    const container = document.getElementById('results-container');
+    const resultsContainer = document.getElementById('results-container');
+    const results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
     
     if (results.length === 0) {
-        container.innerHTML = `
+        resultsContainer.innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-camera fa-4x text-muted mb-3"></i>
-                <p class="lead">No screenshots or PDFs captured yet.</p>
-                <p>Enter a URL above to create your first capture!</p>
+                <h5 class="text-muted">No screenshots or PDFs captured yet.</h5>
+                <p class="text-muted">Enter a URL above to create your first capture!</p>
             </div>
         `;
         return;
     }
     
-    // Sort by timestamp (newest first)
-    results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    // Create grid
-    container.innerHTML = '<div class="row row-cols-1 row-cols-md-3 g-4" id="results-grid"></div>';
-    const grid = document.getElementById('results-grid');
-    
-    // Add results
+    let resultsHTML = '';
     results.forEach((result, index) => {
-        const isImage = result.type === 'screenshot';
-        const template = document.getElementById(isImage ? 'image-template' : 'pdf-template');
-        const clone = document.importNode(template.content, true);
+        let contentHTML = '';
         
-        // Set content
-        if (isImage) {
-            clone.querySelector('.result-img').src = result.dataUrl;
+        if (result.type === 'screenshot') {
+            contentHTML = `
+                <div class="text-center">
+                    <img src="${result.dataUrl}" class="img-fluid rounded border" alt="Screenshot of ${result.url}">
+                </div>
+            `;
+        } else if (result.type === 'pdf') {
+            contentHTML = `
+                <div class="text-center">
+                    <i class="fas fa-file-pdf fa-4x text-danger mb-2"></i>
+                    <p>PDF Generated</p>
+                    <a href="${result.dataUrl}" class="btn btn-sm btn-primary" download="page.pdf">Download PDF</a>
+                </div>
+            `;
+        } else if (result.type === 'scrape') {
+            contentHTML = `
+                <div class="border rounded p-3 bg-light">
+                    <h6>Scraped Elements:</h6>
+                    <pre class="mb-0">${escapeHtml(result.content)}</pre>
+                </div>
+            `;
+        } else if (result.type === 'html') {
+            contentHTML = `
+                <div class="border rounded p-3 bg-light">
+                    <h6>HTML Content:</h6>
+                    <pre class="mb-0 text-wrap">${escapeHtml(result.content.substring(0, 200))}...</pre>
+                </div>
+            `;
         }
-        clone.querySelector('.result-url').textContent = result.url;
-        clone.querySelector('.result-time').textContent = new Date(result.timestamp).toLocaleString();
-        clone.querySelector('.result-type').textContent = result.type;
-        clone.querySelector('.result-link').href = result.dataUrl;
         
-        // Add delete handler
-        clone.querySelector('.result-delete').addEventListener('click', function() {
-            deleteResult(index);
-        });
+        // Add analysis section if it exists
+        let analysisHTML = '';
+        if (result.analysis) {
+            analysisHTML = `
+                <div class="mt-3 border-top pt-3">
+                    <h6><i class="fas fa-chart-line text-success"></i> Analysis:</h6>
+                    <div class="analysis-content">${result.analysis.replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
+        }
         
-        // Add to grid
-        grid.appendChild(clone);
+        // Create result card
+        resultsHTML += `
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="text-truncate" title="${result.url}">${result.url}</span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteResult(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        ${contentHTML}
+                        ${analysisHTML}
+                    </div>
+                    <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                        <small class="text-muted">${new Date(result.timestamp).toLocaleString()}</small>
+                        ${!result.analysis ? `
+                            <button class="btn btn-sm btn-success analyze-btn" data-result-id="${index}">
+                                <i class="fas fa-search"></i> Analyze
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
     });
+    
+    resultsContainer.innerHTML = `<div class="row">${resultsHTML}</div>`;
 }
 
 // Delete a result
 function deleteResult(index) {
     if (confirm('Are you sure you want to delete this item?')) {
-        const results = JSON.parse(localStorage.getItem('cfRestResults') || '[]');
+        let results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
         results.splice(index, 1);
-        localStorage.setItem('cfRestResults', JSON.stringify(results));
-        loadSavedResults();
+        localStorage.setItem('capturedResults', JSON.stringify(results));
+        loadSavedResults(); // Refresh the UI
         showFlashMessage('Item deleted successfully', 'success');
     }
 }
