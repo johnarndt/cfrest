@@ -2,19 +2,39 @@
  * Function to generate SEO-optimized titles, descriptions, and hashtags using Groq's API
  */
 export async function onRequest(context) {
-  // Get the URL and metadata from the request
-  const request = await context.request.json();
-  const { url, title, description } = request;
+  // Log that the function was called and available environment variables
+  console.log('generateSEO function called, env vars available:', {
+    GROQ_API_KEY: !!context.env.GROQ_API_KEY
+  });
   
-  // Check if required data was provided
-  if (!url) {
-    return new Response(JSON.stringify({ error: 'URL is required' }), {
-      status: 400, 
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
   try {
+    // Get the URL and metadata from the request
+    const request = await context.request.json();
+    const { url, title, description } = request;
+    
+    console.log('Request data received:', {
+      hasUrl: !!url,
+      hasTitle: !!title,
+      hasDescription: !!description
+    });
+    
+    // Check if required data was provided
+    if (!url) {
+      return new Response(JSON.stringify({ 
+        error: 'URL is required', 
+        success: false 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check if we have a Groq API key
+    if (!context.env.GROQ_API_KEY) {
+      console.error('Missing GROQ_API_KEY in environment variables');
+      throw new Error('GROQ_API_KEY environment variable is not set');
+    }
+    
     // Prepare a prompt for Groq to generate social media content
     const prompt = `
       Generate SEO-optimized social media content for the following webpage:
@@ -52,6 +72,8 @@ export async function onRequest(context) {
       Make the content engaging, click-worthy, but not clickbait. Maintain accuracy.
     `;
 
+    console.log('Prompt prepared:', prompt);
+
     // Call Groq's API
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -76,6 +98,8 @@ export async function onRequest(context) {
       })
     });
 
+    console.log('Groq API response received:', response.status);
+
     // Check if the request was successful
     if (!response.ok) {
       const errorData = await response.json();
@@ -89,6 +113,7 @@ export async function onRequest(context) {
     try {
       // Try to parse the JSON from the completion
       const completion = data.choices[0].message.content;
+      console.log('Completion received:', completion);
       // Extract the JSON part from the response
       const jsonMatch = completion.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -106,10 +131,13 @@ export async function onRequest(context) {
       });
     }
 
+    console.log('SEO content generated:', seoContent);
+
     return new Response(JSON.stringify(seoContent), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
+    console.error('Error occurred:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
