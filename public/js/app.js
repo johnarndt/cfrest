@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         getHtmlContent();
     });
+    
+    // Add test environment button functionality
+    document.getElementById('test-env-btn').addEventListener('click', function() {
+        testEnvironment();
+    });
 });
 
 // Flash message helper
@@ -317,6 +322,39 @@ async function getHtmlContent() {
     } catch (error) {
         showFlashMessage(`Error fetching HTML: ${error.message}`, 'error');
         console.error(error);
+    }
+}
+
+// Test environment variables
+async function testEnvironment() {
+    try {
+        const testDiv = document.getElementById('test-results');
+        const testPre = testDiv.querySelector('pre');
+        
+        testDiv.classList.remove('d-none');
+        testPre.textContent = 'Testing environment...';
+        
+        const response = await fetch('/test-env');
+        
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        testPre.textContent = JSON.stringify(data, null, 2);
+        
+        if (!data.hasApiToken || !data.hasAccountId) {
+            testPre.classList.add('text-danger');
+        } else {
+            testPre.classList.add('text-success');
+        }
+    } catch (error) {
+        const testDiv = document.getElementById('test-results');
+        const testPre = testDiv.querySelector('pre');
+        
+        testDiv.classList.remove('d-none');
+        testPre.textContent = `Error checking environment: ${error.message}`;
+        testPre.classList.add('text-danger');
     }
 }
 
