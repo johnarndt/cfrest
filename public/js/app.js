@@ -4,16 +4,17 @@ const generateBtn = document.getElementById('generate-btn');
 const loading = document.getElementById('loading');
 const previewContainer = document.getElementById('preview-container');
 const errorContainer = document.getElementById('error-container');
+const errorText = document.getElementById('error-text');
 const platformButtons = document.querySelectorAll('.platform-btn');
 const platformPreviews = document.querySelectorAll('.platform-preview');
 
 // Store generated data
-const generatedData = {
+let generatedData = {
   url: '',
   title: '',
   description: '',
   screenshots: {},
-  downloadUrls: {}, // New property to store download URLs
+  downloadUrls: {}, 
   seoContent: null
 };
 
@@ -67,24 +68,23 @@ for (const platform in platformData) {
 
 // Main function to generate previews
 async function generatePreviews() {
+  // Get the URL from the input
   const url = urlInput.value.trim();
   
-  if (!url) {
+  // Validate URL
+  if (!isValidUrl(url)) {
     showError('Please enter a valid URL');
     return;
   }
   
-  if (!isValidUrl(url)) {
-    showError('Please enter a valid URL with http:// or https:// prefix');
-    return;
-  }
-  
-  // Show loading and hide previous results
-  loading.classList.remove('hidden');
-  previewContainer.classList.add('hidden');
-  errorContainer.classList.add('hidden');
-  
   try {
+    // Show loading indicator
+    loading.style.display = 'flex';
+    previewContainer.style.display = 'none';
+    errorContainer.style.display = 'none';
+    
+    console.log('Generating preview for URL:', url);
+    
     // Reset stored data
     generatedData = {
       url,
@@ -104,31 +104,34 @@ async function generatePreviews() {
     const seoContent = await generateSEO(url, metadata.title, metadata.description);
     generatedData.seoContent = seoContent;
     
-    // Step 3: Generate screenshots for each platform - catch individual errors
-    try {
-      // Instead of awaiting all 3 separately, just generate one screenshot for all
-      await generateScreenshot('twitter');
-      // Use the same screenshot for all platforms
-      generatedData.screenshots['linkedin'] = generatedData.screenshots['twitter'];
-      generatedData.screenshots['facebook'] = generatedData.screenshots['twitter'];
-    } catch (screenshotError) {
-      console.error('Error generating screenshots:', screenshotError);
-      // Continue with the rest of the function even if screenshots fail
-    }
+    // Step 3: Generate screenshots for each platform
+    console.log('Generating screenshots for all platforms');
     
-    // Step 4: Update the UI with all the generated content
+    const platforms = ['twitter', 'linkedin', 'facebook'];
+    const screenshotPromises = platforms.map(platform => 
+      generateScreenshot(platform).catch(error => {
+        console.error(`Error generating ${platform} screenshot:`, error);
+        return false;
+      })
+    );
+    
+    // Wait for all screenshots to be generated
+    await Promise.all(screenshotPromises);
+    
+    // Update the UI with generated content
     updateUI();
     
-    // Show the preview container
-    loading.classList.add('hidden');
-    previewContainer.classList.remove('hidden');
+    // Hide loading indicator and show preview
+    loading.style.display = 'none';
+    previewContainer.style.display = 'block';
     
     // Switch to Twitter tab by default
     switchTab('twitter');
+    
   } catch (error) {
     console.error('Error generating previews:', error);
-    loading.classList.add('hidden');
-    showError(error.message || 'An error occurred while generating previews');
+    showError(`Failed to generate previews: ${error.message}`);
+    loading.style.display = 'none';
   }
 }
 
@@ -190,9 +193,20 @@ async function generateScreenshot(platform) {
     const imageContainer = platformPreview.querySelector('.preview-image');
     imageContainer.innerHTML = '<div class="platform-loading">Generating preview...</div>';
     
+    console.log(`Making API call to renderSite for ${platform}`);
+    
     // Call the screenshot API
     const response = await fetch(`/renderSite?url=${encodeURIComponent(generatedData.url)}&width=${width}&height=${height}&platform=${platform}`);
+    
+    if (!response.ok) {
+      console.error(`Screenshot API response not OK: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Error text: ${errorText}`);
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    
     const data = await response.json();
+    console.log(`Screenshot response for ${platform}:`, data);
     
     if (!data.success || data.error) {
       throw new Error(data.error || 'Failed to generate screenshot');
@@ -202,7 +216,7 @@ async function generateScreenshot(platform) {
     generatedData.screenshots[platform] = data.result.screenshotUrl;
     
     // Store the download URL if available
-    if (data.result.downloadUrl) {
+    if (data.result && data.result.downloadUrl) {
       generatedData.downloadUrls[platform] = data.result.downloadUrl;
     }
     
@@ -237,7 +251,9 @@ async function generateScreenshot(platform) {
     
     // Enable download button
     const downloadBtn = platformPreview.querySelector('.download-btn');
-    downloadBtn.disabled = false;
+    if (downloadBtn) {
+      downloadBtn.disabled = false;
+    }
     
     return true;
   } catch (error) {
@@ -375,6 +391,7 @@ function downloadImage(platform) {
   // First check if we have a dedicated download URL (from cloud storage)
   const downloadUrl = generatedData.downloadUrls[platform];
   if (downloadUrl) {
+    console.log(`Downloading image from URL: ${downloadUrl}`);
     // Create an invisible anchor element
     const a = document.createElement('a');
     a.href = downloadUrl;
@@ -396,6 +413,7 @@ function downloadImage(platform) {
     return;
   }
   
+  console.log(`Downloading image from base64 data`);
   // Create an invisible anchor element
   const a = document.createElement('a');
   a.href = screenshotUrl;
@@ -411,7 +429,7 @@ function downloadImage(platform) {
 // Show error message
 function showError(message) {
   errorText.textContent = message;
-  errorContainer.classList.remove('hidden');
+  errorContainer.style.display = 'block';
 }
 
 // Validate URL format

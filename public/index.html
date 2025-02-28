@@ -20,21 +20,25 @@
         <input type="url" id="url-input" placeholder="Enter any URL to generate previews" required>
         <button id="generate-btn">Generate Previews</button>
       </div>
-      <div id="loading" class="hidden">
+      <div id="loading" style="display: none;">
         <div class="spinner"></div>
         <p>Generating previews... This may take a moment.</p>
       </div>
     </section>
 
-    <section id="preview-container" class="hidden">
+    <div id="error-container" style="display: none;" class="error-message">
+      <p id="error-text">Error message will appear here</p>
+    </div>
+
+    <section id="preview-container" style="display: none;">
       <div class="tabs">
-        <button class="tab-btn active" data-platform="twitter">
+        <button class="tab-btn platform-btn active" data-platform="twitter">
           <i class="fab fa-twitter"></i> Twitter
         </button>
-        <button class="tab-btn" data-platform="linkedin">
+        <button class="tab-btn platform-btn" data-platform="linkedin">
           <i class="fab fa-linkedin"></i> LinkedIn
         </button>
-        <button class="tab-btn" data-platform="facebook">
+        <button class="tab-btn platform-btn" data-platform="facebook">
           <i class="fab fa-facebook"></i> Facebook
         </button>
       </div>
@@ -50,20 +54,33 @@
             <div class="preview-text">
               <h3 id="twitter-title">Title will appear here</h3>
               <p id="twitter-description">Description will appear here</p>
-              <span class="website-url" id="twitter-url">website.com</span>
+              <p class="preview-url" id="twitter-url">domain.com</p>
             </div>
           </div>
-          <div class="preview-meta">
-            <h3>Suggested Hashtags</h3>
-            <div id="hashtags-container" class="hashtags"></div>
-          </div>
-          <div class="preview-actions">
-            <button id="copy-twitter" class="copy-btn">
-              <i class="fas fa-copy"></i> Copy Twitter Text
+          <div class="action-buttons">
+            <button class="action-btn copy-btn" onclick="copyText('twitter')">
+              <i class="fas fa-copy"></i> Copy Text
             </button>
-            <button id="download-twitter" class="download-btn">
+            <button class="action-btn download-btn" onclick="downloadImage('twitter')" disabled>
               <i class="fas fa-download"></i> Download Image
             </button>
+          </div>
+          <div class="preview-seo">
+            <h3>Generated SEO Content</h3>
+            <div class="seo-content" id="twitter-seo">
+              <div class="seo-item">
+                <h4>Title:</h4>
+                <p id="twitter-seo-title">SEO title will appear here</p>
+              </div>
+              <div class="seo-item">
+                <h4>Description:</h4>
+                <p id="twitter-seo-description">SEO description will appear here</p>
+              </div>
+              <div class="seo-item">
+                <h4>Hashtags:</h4>
+                <p id="twitter-seo-hashtags">SEO hashtags will appear here</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -77,16 +94,33 @@
             <div class="preview-text">
               <h3 id="linkedin-title">Title will appear here</h3>
               <p id="linkedin-description">Description will appear here</p>
-              <span class="website-url" id="linkedin-url">website.com</span>
+              <p class="preview-url" id="linkedin-url">domain.com</p>
             </div>
           </div>
-          <div class="preview-actions">
-            <button id="copy-linkedin" class="copy-btn">
-              <i class="fas fa-copy"></i> Copy LinkedIn Text
+          <div class="action-buttons">
+            <button class="action-btn copy-btn" onclick="copyText('linkedin')">
+              <i class="fas fa-copy"></i> Copy Text
             </button>
-            <button id="download-linkedin" class="download-btn">
+            <button class="action-btn download-btn" onclick="downloadImage('linkedin')" disabled>
               <i class="fas fa-download"></i> Download Image
             </button>
+          </div>
+          <div class="preview-seo">
+            <h3>Generated SEO Content</h3>
+            <div class="seo-content" id="linkedin-seo">
+              <div class="seo-item">
+                <h4>Title:</h4>
+                <p id="linkedin-seo-title">SEO title will appear here</p>
+              </div>
+              <div class="seo-item">
+                <h4>Description:</h4>
+                <p id="linkedin-seo-description">SEO description will appear here</p>
+              </div>
+              <div class="seo-item">
+                <h4>Hashtags:</h4>
+                <p id="linkedin-seo-hashtags">SEO hashtags will appear here</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -100,31 +134,37 @@
             <div class="preview-text">
               <h3 id="facebook-title">Title will appear here</h3>
               <p id="facebook-description">Description will appear here</p>
-              <span class="website-url" id="facebook-url">website.com</span>
+              <p class="preview-url" id="facebook-url">domain.com</p>
             </div>
           </div>
-          <div class="preview-actions">
-            <button id="copy-facebook" class="copy-btn">
-              <i class="fas fa-copy"></i> Copy Facebook Text
+          <div class="action-buttons">
+            <button class="action-btn copy-btn" onclick="copyText('facebook')">
+              <i class="fas fa-copy"></i> Copy Text
             </button>
-            <button id="download-facebook" class="download-btn">
+            <button class="action-btn download-btn" onclick="downloadImage('facebook')" disabled>
               <i class="fas fa-download"></i> Download Image
             </button>
+          </div>
+          <div class="preview-seo">
+            <h3>Generated SEO Content</h3>
+            <div class="seo-content" id="facebook-seo">
+              <div class="seo-item">
+                <h4>Title:</h4>
+                <p id="facebook-seo-title">SEO title will appear here</p>
+              </div>
+              <div class="seo-item">
+                <h4>Description:</h4>
+                <p id="facebook-seo-description">SEO description will appear here</p>
+              </div>
+              <div class="seo-item">
+                <h4>Hashtags:</h4>
+                <p id="facebook-seo-hashtags">SEO hashtags will appear here</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
-
-    <section id="error-container" class="hidden">
-      <div class="error-message">
-        <i class="fas fa-exclamation-triangle"></i>
-        <p id="error-text">An error occurred. Please try again.</p>
-      </div>
-    </section>
-
-    <footer>
-      <p>Powered by Cloudflare's Browser Rendering API and Groq's AI API</p>
-    </footer>
   </div>
 
   <script src="js/app.js"></script>

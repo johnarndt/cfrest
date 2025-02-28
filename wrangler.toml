@@ -8,7 +8,7 @@ assets = "./public"
 build.command = "npm install"
 
 # Build output directory
-build.output = "public"
+build.output_directory = "public"
 
 # Tell Cloudflare Pages this is a Functions project
 compatibility_date = "2024-01-01"
@@ -22,10 +22,25 @@ compatibility_flags = ["nodejs_compat"]
 # GROQ_API_KEY = ""
 
 # Configure Cloudflare Pages route handling
-# This matches our functions/routes.json
-[routes]
-pattern = "/*"
-script = "routes"
+[[routes]]
+pattern = "/renderSite"
+script = "renderSite"
+
+[[routes]]
+pattern = "/fetchMetadata"
+script = "fetchMetadata"
+
+[[routes]]
+pattern = "/generateSEO"
+script = "generateSEO"
+
+[[routes]]
+pattern = "/storeScreenshot"
+script = "storeScreenshot"
+
+[[routes]]
+pattern = "/getScreenshot/*"
+script = "getScreenshot"
 
 # Configure caching for our application
 [cache]
