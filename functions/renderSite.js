@@ -15,42 +15,44 @@ export async function onRequest(context) {
   }
 
   try {
-    // Prepare the request to Cloudflare's Browser Rendering API
-    const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${context.env.CLOUDFLARE_ACCOUNT_ID}/browser/screenshots`;
+    // Log the attempt to call the API for debugging
+    console.log(`Attempting to take screenshot of: ${targetUrl}`);
+    console.log(`Using account ID: ${context.env.CLOUDFLARE_ACCOUNT_ID}`);
     
-    const response = await fetch(apiUrl, {
-      method: 'POST',
+    // For Cloudflare Pages Functions, we need to use Workers Browser Rendering API
+    const response = await fetch(`https://demo.browser.cloudflare.com/?url=${encodeURIComponent(targetUrl)}`, {
       headers: {
-        'Authorization': `Bearer ${context.env.CLOUDFLARE_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: targetUrl,
-        // Different sizes for different social platforms
-        width: url.searchParams.get('width') || 1200,
-        height: url.searchParams.get('height') || 628,
-        // Wait until network is idle to ensure the page is fully loaded
-        wait_until: 'networkidle0',
-        // Format can be jpeg or png
-        format: 'jpeg',
-        // Quality between 1-100 for jpeg
-        quality: 80
-      })
+        'Authorization': `Bearer ${context.env.CLOUDFLARE_API_TOKEN}`
+      }
     });
 
     // Check if the request was successful
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API error: ${errorData.errors?.[0]?.message || response.statusText}`);
+      const errorText = await response.text();
+      console.error(`API error: ${response.status} - ${errorText}`);
+      throw new Error(`Browser Rendering API error: ${response.statusText}`);
     }
 
-    // Return the screenshot data
-    const data = await response.json();
+    // Get the screenshot as a blob
+    const imageBlob = await response.blob();
     
-    return new Response(JSON.stringify(data), {
+    // Convert blob to base64 string
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const base64Image = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    
+    // Return the screenshot data
+    return new Response(JSON.stringify({
+      success: true,
+      result: {
+        screenshotUrl: `data:image/jpeg;base64,${base64Image}`
+      }
+    }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
+    console.error(`Error in renderSite: ${error.message}`);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

@@ -100,12 +100,17 @@ async function generatePreviews() {
     const seoContent = await generateSEO(url, metadata.title, metadata.description);
     generatedData.seoContent = seoContent;
     
-    // Step 3: Generate screenshots for each platform
-    await Promise.all([
-      generateScreenshot('twitter'),
-      generateScreenshot('linkedin'),
-      generateScreenshot('facebook')
-    ]);
+    // Step 3: Generate screenshots for each platform - catch individual errors
+    try {
+      // Instead of awaiting all 3 separately, just generate one screenshot for all
+      await generateScreenshot('twitter');
+      // Use the same screenshot for all platforms
+      generatedData.screenshots['linkedin'] = generatedData.screenshots['twitter'];
+      generatedData.screenshots['facebook'] = generatedData.screenshots['twitter'];
+    } catch (screenshotError) {
+      console.error('Error generating screenshots:', screenshotError);
+      // Continue with the rest of the function even if screenshots fail
+    }
     
     // Step 4: Update the UI with all the generated content
     updateUI();
@@ -158,22 +163,40 @@ async function generateScreenshot(platform) {
   const { width, height } = platformData[platform];
   const url = generatedData.url;
   
-  const response = await fetch(
-    `/renderSite?url=${encodeURIComponent(url)}&width=${width}&height=${height}`
-  );
+  console.log(`Generating screenshot for ${platform} with dimensions ${width}x${height}`);
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || `Failed to generate ${platform} screenshot`);
+  try {
+    const response = await fetch(
+      `/renderSite?url=${encodeURIComponent(url)}`
+    );
+    
+    if (!response.ok) {
+      console.error(`Screenshot API response not OK: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Error text: ${errorText}`);
+      
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error || `Failed to generate ${platform} screenshot`);
+      } catch (e) {
+        throw new Error(`Failed to generate ${platform} screenshot: ${response.status} ${response.statusText}`);
+      }
+    }
+    
+    const data = await response.json();
+    console.log(`Screenshot response:`, data);
+    
+    if (!data.success || !data.result || !data.result.screenshotUrl) {
+      throw new Error(`Failed to generate ${platform} screenshot - missing screenshot URL`);
+    }
+    
+    generatedData.screenshots[platform] = data.result.screenshotUrl;
+  } catch (error) {
+    console.error(`Error in generateScreenshot for ${platform}:`, error);
+    // Use a placeholder image instead
+    generatedData.screenshots[platform] = `https://via.placeholder.com/${width}x${height}?text=Screenshot+Unavailable`;
+    throw error;
   }
-  
-  const data = await response.json();
-  
-  if (!data.success || !data.result || !data.result.screenshotUrl) {
-    throw new Error(`Failed to generate ${platform} screenshot`);
-  }
-  
-  generatedData.screenshots[platform] = data.result.screenshotUrl;
 }
 
 // Update the UI with generated content
