@@ -88,7 +88,23 @@ export async function onRequest(context) {
     // Try different authentication methods
     let response;
     let authMethodUsed;
+    let errorMessages = [];
     
+    // Additional API token debug info (not showing actual token)
+    console.log('API Token debug info:', {
+      isDefined: typeof context.env.CLOUDFLARE_API_TOKEN === 'string',
+      length: context.env.CLOUDFLARE_API_TOKEN?.length || 0, 
+      firstChar: context.env.CLOUDFLARE_API_TOKEN?.charAt(0) || 'undefined',
+      lastChar: context.env.CLOUDFLARE_API_TOKEN?.charAt(context.env.CLOUDFLARE_API_TOKEN?.length - 1) || 'undefined'
+    });
+    
+    console.log('Account ID debug info:', {
+      isDefined: typeof context.env.CLOUDFLARE_ACCOUNT_ID === 'string',
+      length: context.env.CLOUDFLARE_ACCOUNT_ID?.length || 0,
+      firstChar: context.env.CLOUDFLARE_ACCOUNT_ID?.charAt(0) || 'undefined',
+      lastChar: context.env.CLOUDFLARE_ACCOUNT_ID?.charAt(context.env.CLOUDFLARE_ACCOUNT_ID?.length - 1) || 'undefined'
+    });
+
     // Try the X-Auth method first
     try {
       console.log('Trying X-Auth header authentication method');
@@ -107,7 +123,11 @@ export async function onRequest(context) {
       console.log('X-Auth method response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(`X-Auth method failed with status ${response.status}`);
+        const errorText = await response.text();
+        const errorMsg = `X-Auth method failed with status ${response.status}: ${errorText}`;
+        errorMessages.push(errorMsg);
+        console.log(errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.log('X-Auth method failed, trying Bearer token method');
@@ -127,15 +147,44 @@ export async function onRequest(context) {
         console.log('Bearer method response status:', response.status);
         
         if (!response.ok) {
-          throw new Error(`Bearer method failed with status ${response.status}`);
+          const errorText = await response.text();
+          const errorMsg = `Bearer method failed with status ${response.status}: ${errorText}`;
+          errorMessages.push(errorMsg);
+          console.log(errorMsg);
+          throw new Error(errorMsg);
         }
       } catch (bearerError) {
-        console.error('Both authentication methods failed:', {
-          xAuthError: error.message,
-          bearerError: bearerError.message
-        });
-        
-        throw new Error('All authentication methods failed');
+        // Try a third method with CF-Access headers
+        try {
+          console.log('Trying CF-Access header authentication method');
+          response = await fetch(apiEndpoints[0], {
+            method: 'POST',
+            headers: {
+              'CF-Access-Client-Id': context.env.CLOUDFLARE_ACCOUNT_ID,
+              'CF-Access-Client-Secret': context.env.CLOUDFLARE_API_TOKEN,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+          
+          authMethodUsed = 'CF-Access';
+          console.log('CF-Access method response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            const errorMsg = `CF-Access method failed with status ${response.status}: ${errorText}`;
+            errorMessages.push(errorMsg);
+            console.log(errorMsg);
+            throw new Error(errorMsg);
+          }
+        } catch (cfAccessError) {
+          console.error('All authentication methods failed:', {
+            errorMessages,
+            lastError: cfAccessError.message
+          });
+          
+          throw new Error('All authentication methods failed: ' + errorMessages.join('; '));
+        }
       }
     }
     
