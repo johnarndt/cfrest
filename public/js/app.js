@@ -1,58 +1,5 @@
 // Main application JavaScript
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the UI
-    loadSavedResults();
-
-    // Form submit handlers
-    document.getElementById('screenshot-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        takeScreenshot();
-    });
-
-    document.getElementById('pdf-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        generatePDF();
-    });
-    
-    // Add test environment button functionality
-    document.getElementById('test-env-btn').addEventListener('click', function() {
-        testEnvironment();
-    });
-    
-    // Add analyze website button functionality
-    document.getElementById('analyze-website-btn').addEventListener('click', function() {
-        const url = document.getElementById('screenshotUrl').value;
-        if (url) {
-            analyzeWebsite(url);
-        } else {
-            showFlashMessage('Please enter a URL to analyze', 'error');
-        }
-    });
-    
-    // Add standalone analyzer button functionality
-    document.getElementById('analyze-standalone-btn').addEventListener('click', function() {
-        const url = document.getElementById('analyzerUrl').value;
-        if (url) {
-            analyzeWebsite(url);
-        } else {
-            showFlashMessage('Please enter a URL to analyze', 'error');
-        }
-    });
-    
-    // Add analyze button functionality to results
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('analyze-btn')) {
-            const resultId = e.target.getAttribute('data-result-id');
-            const results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
-            const result = results[resultId];
-            if (result) {
-                analyzeWebsite(result.url, resultId);
-            }
-        }
-    });
-});
-
 // Flash message helper
 function showFlashMessage(message, category = 'success') {
     const flashContainer = document.getElementById('flash-messages');
@@ -249,6 +196,7 @@ function saveResult(result) {
     let results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
     results.push(result);
     localStorage.setItem('capturedResults', JSON.stringify(results));
+    return results.length - 1;
 }
 
 // Analyze website using Groq AI
@@ -265,6 +213,32 @@ async function analyzeWebsite(url, resultId) {
         // Format URL if needed
         const formattedUrl = formatUrl(url);
         
+        // Get screenshot data if analyzing from a result
+        let screenshotData = null;
+        if (resultId !== undefined) {
+            const results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
+            const result = results[resultId];
+            if (result && result.type === 'screenshot' && result.dataUrl) {
+                // Need to convert from objectURL to base64 for API
+                try {
+                    // Fetch the image data from the objectURL
+                    const response = await fetch(result.dataUrl);
+                    const blob = await response.blob();
+                    
+                    // Convert to base64
+                    screenshotData = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                    
+                    console.log('Including screenshot in analysis');
+                } catch (error) {
+                    console.error('Error converting screenshot to base64:', error);
+                }
+            }
+        }
+        
         // Call the API
         const response = await fetch('/api/analyze', {
             method: 'POST',
@@ -272,7 +246,8 @@ async function analyzeWebsite(url, resultId) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                url: formattedUrl
+                url: formattedUrl,
+                screenshot: screenshotData
             })
         });
         
@@ -341,13 +316,13 @@ function loadSavedResults() {
         
         if (result.type === 'screenshot') {
             contentHTML = `
-                <div class="text-center">
+                <div class="text-center mb-3">
                     <img src="${result.dataUrl}" class="img-fluid rounded border" alt="Screenshot of ${result.url}">
                 </div>
             `;
         } else if (result.type === 'pdf') {
             contentHTML = `
-                <div class="text-center">
+                <div class="text-center mb-3">
                     <i class="fas fa-file-pdf fa-4x text-danger mb-2"></i>
                     <p>PDF Generated</p>
                     <a href="${result.dataUrl}" class="btn btn-sm btn-primary" download="page.pdf">Download PDF</a>
@@ -355,10 +330,9 @@ function loadSavedResults() {
             `;
         } else if (result.type === 'analysis') {
             contentHTML = `
-                <div class="text-center">
+                <div class="text-center mb-3">
                     <i class="fas fa-chart-line fa-4x text-success mb-2"></i>
                     <p>Analysis Result</p>
-                    <div class="analysis-content">${result.analysis.replace(/\n/g, '<br>')}</div>
                 </div>
             `;
         }
@@ -366,10 +340,22 @@ function loadSavedResults() {
         // Add analysis section if it exists
         let analysisHTML = '';
         if (result.analysis) {
+            // Convert markdown-like sections to styled HTML
+            let styledAnalysis = result.analysis
+                .replace(/\n## (.*?)📸(.*?)\n/g, '<h5 class="mt-3"><i class="fas fa-camera"></i>$1$2</h5>')
+                .replace(/\n## (.*?)🌟(.*?)\n/g, '<h5 class="mt-3"><i class="fas fa-star"></i>$1$2</h5>')
+                .replace(/\n## (.*?)🔍(.*?)\n/g, '<h5 class="mt-3"><i class="fas fa-search"></i>$1$2</h5>')
+                .replace(/\n## (.*?)⚡(.*?)\n/g, '<h5 class="mt-3"><i class="fas fa-bolt"></i>$1$2</h5>')
+                .replace(/\n## (.*?)🌩️(.*?)\n/g, '<h5 class="mt-3"><i class="fas fa-cloud"></i>$1$2</h5>')
+                .replace(/\n## (.*?)📝(.*?)\n/g, '<h5 class="mt-3"><i class="fas fa-clipboard"></i>$1$2</h5>')
+                .replace(/\n## (.*?)(.*?)\n/g, '<h5 class="mt-3">$1$2</h5>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+                
             analysisHTML = `
                 <div class="mt-3 border-top pt-3">
-                    <h6><i class="fas fa-chart-line text-success"></i> Analysis:</h6>
-                    <div class="analysis-content">${result.analysis.replace(/\n/g, '<br>')}</div>
+                    <h6 class="mb-3"><i class="fas fa-chart-line text-success"></i> Website Analysis:</h6>
+                    <div class="analysis-content">${styledAnalysis}</div>
                 </div>
             `;
         }
@@ -384,15 +370,15 @@ function loadSavedResults() {
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body overflow-auto" style="max-height: 500px;">
                         ${contentHTML}
                         ${analysisHTML}
                     </div>
                     <div class="card-footer bg-white d-flex justify-content-between align-items-center">
                         <small class="text-muted">${new Date(result.timestamp).toLocaleString()}</small>
-                        ${!result.analysis && result.type !== 'analysis' ? `
+                        ${!result.analysis && result.type === 'screenshot' ? `
                             <button class="btn btn-sm btn-success analyze-btn" data-result-id="${index}">
-                                <i class="fas fa-search"></i> Analyze
+                                <i class="fas fa-chart-line"></i> Analyze
                             </button>
                         ` : ''}
                     </div>
@@ -402,6 +388,17 @@ function loadSavedResults() {
     });
     
     resultsContainer.innerHTML = `<div class="row">${resultsHTML}</div>`;
+    
+    // Add event listeners for analyze buttons after inserting the HTML
+    document.querySelectorAll('.analyze-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const resultId = parseInt(this.getAttribute('data-result-id'));
+            const results = JSON.parse(localStorage.getItem('capturedResults') || '[]');
+            if (results[resultId]) {
+                analyzeWebsite(results[resultId].url, resultId);
+            }
+        });
+    });
 }
 
 // Delete a result
@@ -414,3 +411,120 @@ function deleteResult(index) {
         showFlashMessage('Item deleted successfully', 'success');
     }
 }
+
+// Document Ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Load saved results
+    loadSavedResults();
+    
+    // Add screenshot form submission
+    document.getElementById('screenshot-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        takeScreenshot();
+    });
+    
+    // Add PDF form submission
+    document.getElementById('pdf-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        generatePDF();
+    });
+    
+    // Add test environment button functionality
+    document.getElementById('test-env-btn').addEventListener('click', function() {
+        testEnvironment();
+    });
+    
+    // Add analyze with screenshot button functionality
+    document.getElementById('screenshot-analyze-btn').addEventListener('click', async function() {
+        const url = document.getElementById('screenshotUrl').value;
+        if (!url) {
+            showFlashMessage('Please enter a URL first', 'error');
+            return;
+        }
+        
+        // Show loading
+        showFlashMessage('Taking screenshot and analyzing...', 'info');
+        
+        try {
+            // Take a screenshot first
+            const formattedUrl = formatUrl(url);
+            
+            // Call the screenshot API
+            const response = await fetch('/api/screenshot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: formattedUrl,
+                    screenshotOptions: {
+                        fullPage: true
+                    },
+                    viewport: {
+                        width: 1280,
+                        height: 720
+                    },
+                    gotoOptions: {
+                        waitUntil: "networkidle0",
+                        timeout: 30000
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Error taking screenshot: ${response.status} ${response.statusText}`);
+            }
+            
+            // Get the blob data
+            const blob = await response.blob();
+            
+            // Create a local URL for the image and convert to base64
+            const imageUrl = URL.createObjectURL(blob);
+            
+            // Convert to a Base64 string for API
+            const blobToBase64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+            
+            // Now analyze with the screenshot
+            const analyzeResponse = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: formattedUrl,
+                    screenshot: blobToBase64
+                })
+            });
+            
+            if (!analyzeResponse.ok) {
+                throw new Error(`Error analyzing: ${analyzeResponse.status} ${analyzeResponse.statusText}`);
+            }
+            
+            // Get the analysis results
+            const analysisData = await analyzeResponse.json();
+            const analysisText = analysisData.choices[0].message.content;
+            
+            // Save both the screenshot and analysis
+            const resultIndex = saveResult({
+                url: formattedUrl,
+                type: 'screenshot',
+                dataUrl: imageUrl,
+                analysis: analysisText,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Update UI
+            loadSavedResults();
+            
+            // Show success message
+            showFlashMessage(`Screenshot and analysis of ${formattedUrl} completed!`, 'success');
+        } catch (error) {
+            showFlashMessage(`Error: ${error.message}`, 'error');
+            console.error(error);
+        }
+    });
+});

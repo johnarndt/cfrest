@@ -40,6 +40,27 @@ export async function onRequest(context) {
       });
     }
     
+    // Prepare a message for Groq with screenshot if provided
+    let userMessage = `Analyze this website for SEO, performance, and Cloudflare optimization opportunities: ${requestData.url}. Organize your response in sections with emoji icons.`;
+    
+    // If screenshot data is included, modify the message
+    if (requestData.screenshot) {
+      console.log("Screenshot data included in request");
+      userMessage = `Analyze this website for SEO, performance, and Cloudflare optimization opportunities: ${requestData.url}. 
+      
+A screenshot of the website is attached. Please include a "Visual Analysis 📸" section in your response that analyzes the visual layout, user interface design, and any visual elements visible in the screenshot.
+
+The screenshot data is provided in base64 format: ${requestData.screenshot.substring(0, 100)}... (truncated for message size).
+
+Organize your response in sections with emoji icons, including:
+1. Overall Assessment 🌟
+2. SEO Analysis 🔍
+3. Performance Analysis ⚡
+4. Visual Analysis 📸
+5. Cloudflare Optimization Tips 🌩️
+6. Recommendations 📝`;
+    }
+    
     // Call the Groq API
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -52,11 +73,11 @@ export async function onRequest(context) {
         messages: [
           {
             role: "system",
-            content: "You are a professional SEO and website optimization expert. Analyze the website URL provided and give detailed feedback on SEO, performance, and Cloudflare-specific optimizations."
+            content: "You are a professional SEO and website optimization expert with strong visual design analysis skills. Analyze the website URL provided and give detailed feedback on SEO, performance, visual design, and Cloudflare-specific optimizations."
           },
           {
             role: "user",
-            content: `Analyze this website for SEO, performance, and Cloudflare optimization opportunities: ${requestData.url}. If there's a screenshot attached, use that for visual analysis as well. Organize your response in sections with emoji icons.`
+            content: userMessage
           }
         ],
         temperature: 0.5,
