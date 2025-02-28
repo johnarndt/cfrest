@@ -5,13 +5,15 @@
 export async function onRequest(context) {
   // Get the URL from the request - using URL parameters instead of body
   const url = new URL(context.request.url);
-  const targetUrl = url.searchParams.get('url');
   const diagnosticsMode = url.searchParams.get('diagnostics') === 'true';
   
   // If diagnostics mode is enabled, return detailed environment info
   if (diagnosticsMode) {
+    console.log('Diagnostics mode enabled, returning environment info');
     return generateDiagnosticResponse(context);
   }
+  
+  const targetUrl = url.searchParams.get('url');
   
   // Log all available environment variables (keys only for security)
   const envKeys = Object.keys(context.env);
