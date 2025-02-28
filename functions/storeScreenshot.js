@@ -12,12 +12,37 @@ export async function onRequest(context) {
       });
     }
 
-    // Get the request body
-    const request = await context.request.json();
-    const { imageData, url, platform } = request;
+    // Get the request body - parse only once
+    let requestData;
+    try {
+      requestData = await context.request.json();
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON in request body',
+        details: error.message,
+        success: false
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const { imageData, url, platform } = requestData;
+    
+    // Log receipt of data without exposing actual image data
+    console.log('Storing screenshot:', {
+      hasImageData: !!imageData,
+      url: url?.substring(0, 30) + '...',
+      platform,
+      imageDataLength: imageData?.length
+    });
     
     if (!imageData || !url || !platform) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required parameters',
+        success: false
+      }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });

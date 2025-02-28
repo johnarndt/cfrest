@@ -6,7 +6,7 @@ export async function onRequest(context) {
   // Log all available environment variables (keys only for security)
   console.log('Available environment variables:', Object.keys(context.env));
   
-  // Get the URL from the request
+  // Get the URL from the request - using URL parameters instead of body
   const url = new URL(context.request.url);
   const targetUrl = url.searchParams.get('url');
   
@@ -146,6 +146,9 @@ export async function onRequest(context) {
       let errorMessage = `API error: ${response.status} ${response.statusText}`;
       let errorDetails = null;
       
+      // Clone the response before reading it
+      const responseClone = response.clone();
+      
       // Get detailed error information
       try {
         const errorData = await response.json();
@@ -154,7 +157,7 @@ export async function onRequest(context) {
         console.error('Error details:', JSON.stringify(errorData));
       } catch (e) {
         try {
-          const errorText = await response.text();
+          const errorText = await responseClone.text();
           errorDetails = { text: errorText };
           errorMessage = `API error: ${errorText || errorMessage}`;
           console.error('Error response text:', errorText);
@@ -177,9 +180,11 @@ export async function onRequest(context) {
     }
     
     // Parse the successful response
+    // Clone the response before reading it to avoid "body used" errors
+    const responseForParsing = response.clone();
     let data;
     try {
-      data = await response.json();
+      data = await responseForParsing.json();
       console.log('API response structure:', {
         hasScreenshot: !!data.screenshot,
         responseKeys: Object.keys(data),
@@ -200,6 +205,8 @@ export async function onRequest(context) {
 
     // Now store this image using our storage function for better download support
     const platform = url.searchParams.get('platform') || 'default';
+    
+    // Create a new Response with the screenshot data to avoid body used errors
     const storeResponse = await fetch(new URL('/storeScreenshot', context.request.url), {
       method: 'POST',
       headers: {

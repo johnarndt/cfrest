@@ -8,9 +8,23 @@ export async function onRequest(context) {
   });
   
   try {
-    // Get the URL and metadata from the request
-    const request = await context.request.json();
-    const { url, title, description } = request;
+    // Get the URL and metadata from the request - read only once
+    let requestData;
+    try {
+      requestData = await context.request.json();
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON in request body',
+        details: error.message,
+        success: false 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const { url, title, description } = requestData;
     
     console.log('Request data received:', {
       hasUrl: !!url,
