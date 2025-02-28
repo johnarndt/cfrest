@@ -40,8 +40,20 @@ export async function onRequest(context) {
     
     console.log('Making request to Cloudflare Browser Rendering API with:', {
       url: targetUrl,
-      accountId: context.env.CLOUDFLARE_ACCOUNT_ID
+      accountId: context.env.CLOUDFLARE_ACCOUNT_ID ? 'Available' : 'Missing',
+      apiToken: context.env.CLOUDFLARE_API_TOKEN ? 'Available' : 'Missing',
+      width: requestBody.width,
+      height: requestBody.height
     });
+    
+    // Check if credentials are available
+    if (!context.env.CLOUDFLARE_API_TOKEN) {
+      throw new Error('CLOUDFLARE_API_TOKEN is missing in environment variables');
+    }
+    
+    if (!context.env.CLOUDFLARE_ACCOUNT_ID) {
+      throw new Error('CLOUDFLARE_ACCOUNT_ID is missing in environment variables');
+    }
     
     // Make the request to the Cloudflare Browser Rendering API
     const response = await fetch(browserRenderingApiUrl, {

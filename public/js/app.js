@@ -400,56 +400,60 @@ async function generateScreenshot(platform) {
     }
     
     // Show loading indicator for this platform
-    imageContainer.innerHTML = '<div class="platform-loading">Generating preview...</div>';
+    imageContainer.innerHTML = '<div class="platform-loading"><div class="spinner"></div><p>Generating screenshot...</p></div>';
     
-    console.log(`Making API call to renderSite for ${platform}`);
+    console.log(`Making API call to renderSite for ${platform} with dimensions ${width}x${height}`);
     
-    // Call the screenshot API
-    const response = await fetch(`/renderSite?url=${encodeURIComponent(generatedData.url)}&width=${width}&height=${height}&platform=${platform}`);
+    // Get the URL from the input
+    const url = urlInput.value.trim();
+    
+    // Make the API call to capture the screenshot
+    const apiUrl = `/renderSite?url=${encodeURIComponent(url)}&platform=${platform}&width=${width}&height=${height}`;
+    console.log(`API request URL: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl);
+    console.log(`API response status for ${platform}:`, response.status, response.statusText);
     
     if (!response.ok) {
-      console.error(`Screenshot API response not OK: ${response.status}`);
-      const errorText = await response.text();
-      console.error(`Error text: ${errorText}`);
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorText = await response.text();
+      try {
+        // Try to parse as JSON to get more info
+        const errorData = JSON.parse(errorText);
+        console.error(`API error for ${platform}:`, errorData);
+        throw new Error(errorData.error || `API returned ${response.status}`);
+      } catch (e) {
+        // If not JSON, use text directly
+        console.error(`API error text for ${platform}:`, errorText);
+        throw new Error(`Failed to generate screenshot: ${response.status} ${response.statusText}`);
+      }
     }
     
+    // Parse the API response
     const data = await response.json();
-    console.log(`Screenshot response for ${platform}:`, data);
+    console.log(`API response data for ${platform}:`, data);
     
-    if (data.error) {
-      throw new Error(data.error || 'Failed to generate screenshot');
-    }
-    
-    // If we don't have a screenshot URL, throw an error
-    if (!data.result || !data.result.screenshotUrl) {
-      throw new Error('No screenshot URL returned from API');
-    }
-    
-    // Store the screenshot URL
-    generatedData.screenshots[platform] = data.result.screenshotUrl;
-    
-    // Store the download URL if available
-    if (data.result && data.result.downloadUrl) {
-      generatedData.downloadUrls[platform] = data.result.downloadUrl;
+    if (!data.success || !data.result || !data.result.screenshotUrl) {
+      throw new Error(`Missing screenshot data for ${platform}`);
     }
     
     // Load the image
     const img = new Image();
-    let loadingTimeout;
-    
     const imageLoaded = new Promise((resolve, reject) => {
-      loadingTimeout = setTimeout(() => {
-        reject(new Error('Image loading timed out'));
-      }, 15000); // 15 second timeout
+      const loadingTimeout = setTimeout(() => {
+        img.onerror = null;
+        img.onload = null;
+        reject(new Error('Image load timeout'));
+      }, 10000); // 10 second timeout
       
       img.onload = () => {
         clearTimeout(loadingTimeout);
+        console.log(`Screenshot loaded successfully for ${platform}`);
         resolve();
       };
       
       img.onerror = () => {
         clearTimeout(loadingTimeout);
+        console.error(`Failed to load image for ${platform} from URL:`, data.result.screenshotUrl.substring(0, 50) + '...');
         reject(new Error('Failed to load image'));
       };
       
@@ -467,6 +471,14 @@ async function generateScreenshot(platform) {
     const downloadBtn = platformPreview.querySelector('.download-btn');
     if (downloadBtn) {
       downloadBtn.disabled = false;
+    }
+    
+    // Store the screenshot URL
+    generatedData.screenshots[platform] = data.result.screenshotUrl;
+    
+    // Store the download URL if available
+    if (data.result && data.result.downloadUrl) {
+      generatedData.downloadUrls[platform] = data.result.downloadUrl;
     }
     
     return true;
