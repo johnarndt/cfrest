@@ -57,7 +57,42 @@ export async function onRequest(context) {
     const urlHash = await hashString(url);
     const filename = `${platform}-${urlHash}-${timestamp}.jpg`;
     
-    // Use Cloudflare Worker's cache for temporary storage (lasts up to 24 hours)
+    console.log(`Storing image with filename: ${filename}`);
+    
+    // Check if we have R2 storage binding available
+    if (context.env.PREVIEW_IMAGES) {
+      try {
+        // Store image in R2 bucket
+        await context.env.PREVIEW_IMAGES.put(filename, buffer, {
+          httpMetadata: {
+            contentType: 'image/jpeg',
+            cacheControl: 'public, max-age=86400',
+            contentDisposition: `attachment; filename="${filename}"`
+          }
+        });
+        
+        // Get the public URL for the image - adjust this based on your actual domain 
+        const domain = new URL(context.request.url).hostname;
+        const publicUrl = `https://${domain}/getScreenshot/${filename}`;
+        
+        console.log(`Image stored in R2, public URL: ${publicUrl}`);
+        
+        // Return the URL for accessing the image
+        return new Response(JSON.stringify({
+          success: true,
+          imageUrl: publicUrl,
+          filename: filename
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (r2Error) {
+        console.error('R2 storage error:', r2Error);
+        // Fall through to cache storage as fallback
+      }
+    }
+    
+    // Fallback to cache storage if R2 is not available
+    console.log('Falling back to cache storage (24 hour retention)');
     const cacheKey = new Request(`https://image-cache/${filename}`);
     const cache = caches.default;
     
