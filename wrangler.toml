@@ -2,7 +2,7 @@
 name = "social-media-preview-generator"
 
 # Main directory that Cloudflare Pages will deploy
-assets = "./public"
+site = { bucket = "./public" }
 
 # Build command for your project
 build.command = "npm install"
@@ -21,33 +21,11 @@ compatibility_flags = ["nodejs_compat"]
 # CLOUDFLARE_ACCOUNT_ID = ""
 # GROQ_API_KEY = ""
 
-# Configure Cloudflare Pages route handling
-[[routes]]
-pattern = "/renderSite"
-script = "renderSite"
-
-[[routes]]
-pattern = "/fetchMetadata"
-script = "fetchMetadata"
-
-[[routes]]
-pattern = "/generateSEO"
-script = "generateSEO"
-
-[[routes]]
-pattern = "/storeScreenshot"
-script = "storeScreenshot"
-
-[[routes]]
-pattern = "/getScreenshot/*"
-script = "getScreenshot"
-
-# Configure caching for our application
-[cache]
-# Cache content for 24 hours by default
-default_cache_duration = "24h"
-
-# Enable Workers functionality
-[workers]
-max_upload_size = "10MB"
-max_simultaneous_requests = 5
+# Configure Cloudflare Pages route handling for production
+[routes]
+"/" = { type = "file", path = "public/index.html" }
+"/renderSite" = { type = "function", function = "renderSite" }
+"/fetchMetadata" = { type = "function", function = "fetchMetadata" }
+"/generateSEO" = { type = "function", function = "generateSEO" }
+"/storeScreenshot" = { type = "function", function = "storeScreenshot" }
+"/getScreenshot/*" = { type = "function", function = "getScreenshot" }

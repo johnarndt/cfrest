@@ -19,56 +19,59 @@ A Cloudflare Pages-based tool that generates social media share previews for any
 
 ## Setup Instructions
 
-### 1. Clone this repository
+1. Clone this repository
+2. Set up your environment variables in the Cloudflare dashboard or in a local `.env` file:
+   - `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token with Browser Rendering access
+   - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
+   - `GROQ_API_KEY`: Your Groq API key
 
-```bash
-git clone <repository-url>
-cd social-media-preview-generator
-```
+3. Install dependencies:
+   ```
+   npm install
+   ```
 
-### 2. Install dependencies
+4. For local development:
+   ```
+   npx wrangler pages dev public --functions-dir functions --compatibility-flag=nodejs_compat
+   ```
 
-```bash
-npm install
-```
+## Deployment
 
-### 3. Configure environment variables
+### Deploying to Cloudflare Pages
 
-Create a `.env` file in the root directory with the following variables:
+1. **Connect your GitHub repository**:
+   - Log in to the Cloudflare dashboard
+   - Navigate to Pages
+   - Click "Create a project"
+   - Connect your GitHub account and select this repository
 
-```
-CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
-CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
-GROQ_API_KEY=your_groq_api_key
-```
+2. **Configure your build settings**:
+   - Build command: `npm install`
+   - Build output directory: `public`
+   - Root directory: `/`
 
-To get these values:
+3. **Add environment variables**:
+   - Go to Settings > Environment variables
+   - Add your `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `GROQ_API_KEY`
+   - Set each variable to be available in both production and preview environments
 
-- **Cloudflare API Token**: Create a token with the "Browser Rendering:Edit" permission in your Cloudflare dashboard.
-- **Cloudflare Account ID**: Found in your Cloudflare dashboard URL: `https://dash.cloudflare.com/` followed by your account ID.
-- **Groq API Key**: Create one in your Groq account dashboard.
+4. **Deploy**:
+   - Cloudflare will automatically deploy your application
+   - Each push to your main branch will trigger a new deployment
 
-### 4. Local development
+### Manual Deployment via Wrangler
 
-Run the development server:
+To deploy directly from your local machine:
 
-```bash
-npm run dev
-```
+1. Login to Cloudflare from the CLI:
+   ```
+   npx wrangler login
+   ```
 
-This will start a local server, typically at `http://localhost:8788`.
-
-### 5. Deploy to Cloudflare Pages
-
-```bash
-npm run deploy
-```
-
-You'll need to be logged in to Wrangler CLI:
-
-```bash
-npx wrangler login
-```
+2. Deploy your project:
+   ```
+   npx wrangler pages deploy public
+   ```
 
 ## Usage
 
@@ -103,6 +106,13 @@ project/
 - **CORS Issues**: If you encounter CORS errors, make sure you're using Cloudflare Functions as they handle CORS automatically.
 - **Content Security Policy**: Some websites may block screenshots due to CSP. You may need to adjust settings for specific sites.
 - **Rate Limits**: Be aware of the rate limits for both Cloudflare Browser Rendering API and Groq API.
+
+## Troubleshooting
+
+If you encounter issues with button clicks or event handlers:
+- Check the browser console for errors
+- Verify that the DOM elements have the expected IDs and classes
+- Make sure all event listeners are properly attached
 
 ## Further Customization
 

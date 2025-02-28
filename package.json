@@ -4,8 +4,9 @@
   "description": "A tool to generate social media share previews using Cloudflare's Browser Rendering API and Groq's API",
   "main": "index.js",
   "scripts": {
-    "dev": "wrangler pages dev public --binding \"CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}\" --binding \"CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}\" --binding \"GROQ_API_KEY=${GROQ_API_KEY}\"",
-    "deploy": "wrangler pages publish public"
+    "dev": "wrangler pages dev public --functions-dir functions --compatibility-flag=nodejs_compat",
+    "deploy": "wrangler pages deploy public --functions-dir functions",
+    "start": "python3 -m http.server 8000 --directory public"
   },
   "dependencies": {
     "@cloudflare/ai": "^1.0.36",

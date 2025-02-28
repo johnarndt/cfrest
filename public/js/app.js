@@ -5,7 +5,7 @@ const loading = document.getElementById('loading');
 const previewContainer = document.getElementById('preview-container');
 const errorContainer = document.getElementById('error-container');
 const errorText = document.getElementById('error-text');
-const platformButtons = document.querySelectorAll('.platform-btn');
+const tabButtons = document.querySelectorAll('.tab-btn');
 const platformPreviews = document.querySelectorAll('.platform-preview');
 
 // Debug: Log DOM elements to verify they're found
@@ -16,7 +16,7 @@ console.log('DOM Elements loaded:', {
   previewContainer: !!previewContainer,
   errorContainer: !!errorContainer,
   errorText: !!errorText,
-  platformButtonsCount: platformButtons.length,
+  tabButtonsCount: tabButtons.length,
   platformPreviewsCount: platformPreviews.length
 });
 
@@ -50,30 +50,37 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Debug: Test all event listeners
-  if (platformButtons) {
-    platformButtons.forEach((button, index) => {
-      console.log(`Adding event listener to platform button ${index}`);
+  if (tabButtons) {
+    tabButtons.forEach((button, index) => {
+      console.log(`Adding event listener to tab button ${index}`);
       button.addEventListener('click', () => {
-        console.log(`Platform button ${index} clicked`);
+        console.log(`Tab button ${index} clicked`);
         switchTab(button.dataset.platform);
       });
     });
   }
-});
-
-// Event Listeners
-generateBtn.addEventListener('click', generatePreviews);
-platformButtons.forEach(button => {
-  button.addEventListener('click', () => switchTab(button.dataset.platform));
-});
-
-// Setup copy and download buttons for each platform
-for (const platform in platformData) {
-  const { copyBtn, downloadBtn } = platformData[platform];
   
-  copyBtn.addEventListener('click', () => copyText(platform));
-  downloadBtn.addEventListener('click', () => downloadImage(platform));
-}
+  // Setup direct event listeners (in case the DOM ready event version fails)
+  try {
+    // Backup method to ensure click handlers are attached
+    console.log("Setting up direct event listeners as backup");
+    if (generateBtn) {
+      generateBtn.onclick = function() {
+        console.log("Direct onclick handler called");
+        generatePreviews();
+      };
+    }
+    
+    // Direct tab button handlers
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = function() {
+        switchTab(this.dataset.platform);
+      };
+    });
+  } catch (e) {
+    console.error("Error setting direct handlers:", e);
+  }
+});
 
 // Main function to generate previews
 async function generatePreviews() {
@@ -178,11 +185,14 @@ async function fetchMetadata(url) {
     const data = await response.json();
     console.log('Metadata API response data:', data);
     
-    if (!data.success) {
+    // The fetchMetadata endpoint doesn't return a success field,
+    // it just returns the metadata object directly
+    if (data.error) {
       throw new Error(data.error || 'Failed to fetch metadata');
     }
     
-    return data.metadata;
+    // Return the metadata directly since it's already in the right format
+    return data;
   } catch (error) {
     console.error('Error in fetchMetadata:', error);
     throw error;
@@ -209,6 +219,21 @@ async function generateSEO(url, title, description) {
 
 // Generate screenshot for a specific platform
 async function generateScreenshot(platform) {
+  console.log(`Starting screenshot generation for ${platform}`);
+  
+  // Get the platform preview elements
+  const platformPreview = document.getElementById(`${platform}-preview`);
+  if (!platformPreview) {
+    console.error(`Platform preview element not found for ${platform}`);
+    return false;
+  }
+  
+  const imageContainer = platformPreview.querySelector('.preview-image');
+  if (!imageContainer) {
+    console.error(`Image container not found for ${platform}`);
+    return false;
+  }
+  
   try {
     // Configure screenshot parameters based on platform
     let width, height;
@@ -231,8 +256,6 @@ async function generateScreenshot(platform) {
     }
     
     // Show loading indicator for this platform
-    const platformPreview = document.getElementById(`${platform}-preview`);
-    const imageContainer = platformPreview.querySelector('.preview-image');
     imageContainer.innerHTML = '<div class="platform-loading">Generating preview...</div>';
     
     console.log(`Making API call to renderSite for ${platform}`);
@@ -250,8 +273,13 @@ async function generateScreenshot(platform) {
     const data = await response.json();
     console.log(`Screenshot response for ${platform}:`, data);
     
-    if (!data.success || data.error) {
+    if (data.error) {
       throw new Error(data.error || 'Failed to generate screenshot');
+    }
+    
+    // If we don't have a screenshot URL, throw an error
+    if (!data.result || !data.result.screenshotUrl) {
+      throw new Error('No screenshot URL returned from API');
     }
     
     // Store the screenshot URL
@@ -302,9 +330,9 @@ async function generateScreenshot(platform) {
     console.error(`Error generating ${platform} screenshot:`, error);
     
     // Show error in the platform preview
-    const platformPreview = document.getElementById(`${platform}-preview`);
-    const imageContainer = platformPreview.querySelector('.preview-image');
-    imageContainer.innerHTML = `<div class="preview-error">Failed to generate preview: ${error.message}</div>`;
+    if (imageContainer) {
+      imageContainer.innerHTML = `<div class="preview-error">Failed to generate preview: ${error.message}</div>`;
+    }
     
     // Use a placeholder image if available
     try {
@@ -376,23 +404,31 @@ function updateUI() {
 
 // Switch between platform tabs
 function switchTab(platform) {
-  // Update active tab button
-  platformButtons.forEach(button => {
-    if (button.dataset.platform === platform) {
-      button.classList.add('active');
-    } else {
-      button.classList.remove('active');
-    }
-  });
-  
-  // Show the selected platform preview
-  platformPreviews.forEach(preview => {
-    if (preview.id === `${platform}-preview`) {
-      preview.classList.add('active');
-    } else {
-      preview.classList.remove('active');
-    }
-  });
+  console.log(`Switching to ${platform} tab`);
+
+  try {
+    // Update active tab button
+    tabButtons.forEach(button => {
+      if (button.dataset.platform === platform) {
+        button.classList.add('active');
+      } else {
+        button.classList.remove('active');
+      }
+    });
+    
+    // Update active platform preview
+    platformPreviews.forEach(preview => {
+      if (preview.id === `${platform}-preview`) {
+        preview.classList.add('active');
+      } else {
+        preview.classList.remove('active');
+      }
+    });
+    
+    console.log(`Tab switched to ${platform}`);
+  } catch (error) {
+    console.error('Error switching tabs:', error);
+  }
 }
 
 // Copy the generated text to clipboard
@@ -471,8 +507,40 @@ function downloadImage(platform) {
 // Show error message
 function showError(message) {
   console.log('Showing error message:', message);
-  errorText.textContent = message;
-  errorContainer.style.display = 'block';
+  // Safely check if errorText exists before using it
+  if (errorText) {
+    errorText.textContent = message;
+  } else {
+    console.error('Error text element not found!');
+    // Fallback approach
+    if (errorContainer) {
+      errorContainer.innerHTML = `<p>${message}</p>`;
+    }
+  }
+  
+  // Safely show the error container
+  if (errorContainer) {
+    errorContainer.style.display = 'block';
+  } else {
+    // Create an error element if it doesn't exist
+    const tempError = document.createElement('div');
+    tempError.style.padding = '15px';
+    tempError.style.color = 'red';
+    tempError.style.backgroundColor = '#ffeeee';
+    tempError.style.border = '1px solid red';
+    tempError.style.borderRadius = '5px';
+    tempError.style.margin = '20px 0';
+    tempError.textContent = message;
+    
+    // Insert it at the beginning of the container
+    const container = document.querySelector('.container');
+    if (container) {
+      container.insertBefore(tempError, container.firstChild);
+    } else {
+      // Last resort - add to body
+      document.body.appendChild(tempError);
+    }
+  }
 }
 
 // Validate URL format
