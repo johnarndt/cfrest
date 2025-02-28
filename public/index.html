@@ -1,236 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Screenshot Tool</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
-        body {
-            padding-top: 60px;
-        }
-        .flash-messages {
-            position: fixed;
-            top: 70px;
-            right: 10px;
-            z-index: 1050;
-            max-width: 350px;
-        }
-        #results-container {
-            min-height: 200px;
-        }
-        .navbar-brand img {
-            margin-right: 10px;
-        }
-        .text-md {
-            font-size: 1.1rem;
-        }
-        .analysis-content {
-            text-align: left;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-        .analysis-content h5 {
-            margin-top: 15px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #0d6efd;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .analysis-content strong {
-            font-weight: 600;
-            color: #495057;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social Media Preview Generator</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-camera"></i> Web Screenshot Tool
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+  <div class="container">
+    <header>
+      <h1>Social Media Preview Generator</h1>
+      <p>Generate optimized social media previews with Cloudflare and Groq</p>
+    </header>
+
+    <section class="url-input">
+      <div class="input-group">
+        <input type="url" id="url-input" placeholder="Enter any URL to generate previews" required>
+        <button id="generate-btn">Generate Previews</button>
+      </div>
+      <div id="loading" class="hidden">
+        <div class="spinner"></div>
+        <p>Generating previews... This may take a moment.</p>
+      </div>
+    </section>
+
+    <section id="preview-container" class="hidden">
+      <div class="tabs">
+        <button class="tab-btn active" data-platform="twitter">
+          <i class="fab fa-twitter"></i> Twitter
+        </button>
+        <button class="tab-btn" data-platform="linkedin">
+          <i class="fab fa-linkedin"></i> LinkedIn
+        </button>
+        <button class="tab-btn" data-platform="facebook">
+          <i class="fab fa-facebook"></i> Facebook
+        </button>
+      </div>
+
+      <div class="preview-content">
+        <!-- Twitter Preview -->
+        <div class="platform-preview active" id="twitter-preview">
+          <h2>Twitter Preview</h2>
+          <div class="preview-card twitter-card">
+            <div class="preview-image">
+              <img id="twitter-image" src="" alt="Twitter preview image">
+            </div>
+            <div class="preview-text">
+              <h3 id="twitter-title">Title will appear here</h3>
+              <p id="twitter-description">Description will appear here</p>
+              <span class="website-url" id="twitter-url">website.com</span>
+            </div>
+          </div>
+          <div class="preview-meta">
+            <h3>Suggested Hashtags</h3>
+            <div id="hashtags-container" class="hashtags"></div>
+          </div>
+          <div class="preview-actions">
+            <button id="copy-twitter" class="copy-btn">
+              <i class="fas fa-copy"></i> Copy Twitter Text
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
-                            <i class="fas fa-info-circle"></i> About
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <!-- Flash Messages -->
-        <div id="flash-messages"></div>
-
-        <!-- Main Content -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-camera"></i> Take Screenshot</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="screenshot-form" class="mb-3">
-                            <div class="mb-3">
-                                <label for="screenshotUrl" class="form-label">Website URL</label>
-                                <input type="url" class="form-control" id="screenshotUrl" name="url" 
-                                    placeholder="https://example.com" required>
-                            </div>
-                            <div id="screenshot-test-container" class="mb-3">
-                                <button type="button" class="btn btn-info" id="test-env-btn">
-                                    <i class="fas fa-vial"></i> Test Environment
-                                </button>
-                                <div id="test-results" class="mt-2 p-2 border rounded d-none">
-                                    <pre class="mb-0"></pre>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-camera"></i> Take Screenshot
-                                </button>
-                                <button type="button" class="btn btn-warning" id="screenshot-analyze-btn">
-                                    <i class="fas fa-magic"></i> Screenshot & Analyze
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-danger text-white">
-                        <h5 class="mb-0"><i class="fas fa-file-pdf"></i> Generate PDF</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="pdf-form">
-                            <div class="mb-3">
-                                <label for="pdfUrl" class="form-label">Website URL</label>
-                                <input type="url" class="form-control" id="pdfUrl" name="url" 
-                                    placeholder="https://example.com" required>
-                            </div>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-file-pdf"></i> Generate PDF
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            <button id="download-twitter" class="download-btn">
+              <i class="fas fa-download"></i> Download Image
+            </button>
+          </div>
         </div>
 
-        <!-- Results Gallery -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-dark text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-images"></i> Captured Results</h5>
-                    <button class="btn btn-sm btn-outline-light" id="clear-results">
-                        <i class="fas fa-trash"></i> Clear All
-                    </button>
-                </div>
+        <!-- LinkedIn Preview -->
+        <div class="platform-preview" id="linkedin-preview">
+          <h2>LinkedIn Preview</h2>
+          <div class="preview-card linkedin-card">
+            <div class="preview-image">
+              <img id="linkedin-image" src="" alt="LinkedIn preview image">
             </div>
-            <div class="card-body">
-                <div id="results-container" class="mt-3"></div>
+            <div class="preview-text">
+              <h3 id="linkedin-title">Title will appear here</h3>
+              <p id="linkedin-description">Description will appear here</p>
+              <span class="website-url" id="linkedin-url">website.com</span>
             </div>
+          </div>
+          <div class="preview-actions">
+            <button id="copy-linkedin" class="copy-btn">
+              <i class="fas fa-copy"></i> Copy LinkedIn Text
+            </button>
+            <button id="download-linkedin" class="download-btn">
+              <i class="fas fa-download"></i> Download Image
+            </button>
+          </div>
         </div>
-    </div>
 
-    <!-- About Modal -->
-    <div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">About Web Screenshot Tool</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <h6>Features:</h6>
-                    <ul>
-                        <li>Take screenshots of web pages</li>
-                        <li>Generate PDFs from web pages</li>
-                        <li>AI-powered website analysis</li>
-                    </ul>
-                    <h6 class="mt-3">Technologies:</h6>
-                    <ul>
-                        <li>Cloudflare Browser Rendering API</li>
-                        <li>AI Analysis: Groq API (LLama 3 70B)</li>
-                        <li>Deployment: Cloudflare Pages</li>
-                    </ul>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
+        <!-- Facebook Preview -->
+        <div class="platform-preview" id="facebook-preview">
+          <h2>Facebook Preview</h2>
+          <div class="preview-card facebook-card">
+            <div class="preview-image">
+              <img id="facebook-image" src="" alt="Facebook preview image">
             </div>
-        </div>
-    </div>
-
-    <!-- Result Templates -->
-    <template id="image-template">
-        <div class="col">
-            <div class="card h-100 shadow-sm">
-                <img src="" class="card-img-top result-img" alt="Screenshot">
-                <div class="card-body">
-                    <h6 class="card-title text-truncate result-url"></h6>
-                    <p class="card-text small">
-                        <span class="text-muted">Created: </span>
-                        <span class="result-time"></span><br>
-                        <span class="text-muted">Type: </span>
-                        <span class="result-type"></span>
-                    </p>
-                </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex justify-content-between">
-                        <a href="#" class="btn btn-sm btn-primary result-link" target="_blank">
-                            <i class="fas fa-eye"></i> View
-                        </a>
-                        <button class="btn btn-sm btn-danger result-delete">
-                            <i class="fas fa-trash-alt"></i> Delete
-                        </button>
-                    </div>
-                </div>
+            <div class="preview-text">
+              <h3 id="facebook-title">Title will appear here</h3>
+              <p id="facebook-description">Description will appear here</p>
+              <span class="website-url" id="facebook-url">website.com</span>
             </div>
+          </div>
+          <div class="preview-actions">
+            <button id="copy-facebook" class="copy-btn">
+              <i class="fas fa-copy"></i> Copy Facebook Text
+            </button>
+            <button id="download-facebook" class="download-btn">
+              <i class="fas fa-download"></i> Download Image
+            </button>
+          </div>
         </div>
-    </template>
+      </div>
+    </section>
 
-    <template id="pdf-template">
-        <div class="col">
-            <div class="card h-100 shadow-sm">
-                <div class="text-center pt-3">
-                    <i class="fas fa-file-pdf fa-5x text-danger"></i>
-                </div>
-                <div class="card-body">
-                    <h6 class="card-title text-truncate result-url"></h6>
-                    <p class="card-text small">
-                        <span class="text-muted">Created: </span>
-                        <span class="result-time"></span><br>
-                        <span class="text-muted">Type: </span>
-                        <span class="result-type"></span>
-                    </p>
-                </div>
-                <div class="card-footer bg-transparent">
-                    <div class="d-flex justify-content-between">
-                        <a href="#" download class="btn btn-sm btn-primary result-link">
-                            <i class="fas fa-download"></i> Download
-                        </a>
-                        <button class="btn btn-sm btn-danger result-delete">
-                            <i class="fas fa-trash-alt"></i> Delete
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </template>
+    <section id="error-container" class="hidden">
+      <div class="error-message">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p id="error-text">An error occurred. Please try again.</p>
+      </div>
+    </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/app.js"></script>
+    <footer>
+      <p>Powered by Cloudflare's Browser Rendering API and Groq's AI API</p>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,17 @@
+{
+  "name": "social-media-preview-generator",
+  "version": "1.0.0",
+  "description": "A tool to generate social media share previews using Cloudflare's Browser Rendering API and Groq's API",
+  "main": "index.js",
+  "scripts": {
+    "dev": "wrangler pages dev public --binding \"CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}\" --binding \"CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}\" --binding \"GROQ_API_KEY=${GROQ_API_KEY}\"",
+    "deploy": "wrangler pages publish public"
+  },
+  "dependencies": {
+    "@cloudflare/ai": "^1.0.36",
+    "cf-request-maker": "^1.2.2"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.1"
+  }
+}
