@@ -14,6 +14,13 @@ export async function onRequest(context) {
   }
   
   const targetUrl = url.searchParams.get('url');
+  const textOnly = url.searchParams.get('textOnly') === 'true';
+  
+  console.log('Request parameters:', {
+    targetUrl,
+    textOnly,
+    hasUrl: !!targetUrl
+  });
   
   // Log all available environment variables (keys only for security)
   const envKeys = Object.keys(context.env);
@@ -56,6 +63,44 @@ export async function onRequest(context) {
   try {
     // Cloudflare Browser Rendering API documentation reference:
     // https://developers.cloudflare.com/browser-rendering/
+    
+    // Check if this is a text-only request
+    if (textOnly) {
+      console.log('Text-only mode requested, using DOM extraction endpoint');
+      
+      try {
+        // For text extraction, we'll use a simpler fetch approach
+        const response = await fetch(targetUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch website content: ${response.status} ${response.statusText}`);
+        }
+        
+        const htmlContent = await response.text();
+        
+        // Implement a simple text extraction from HTML
+        // This is a basic implementation - in production, you might want a more robust solution
+        const textContent = extractTextFromHtml(htmlContent);
+        
+        console.log('Text extraction successful, content length:', textContent.length);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          pageContent: textContent
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (textExtractionError) {
+        console.error('Error in text extraction:', textExtractionError);
+        return new Response(JSON.stringify({ 
+          error: `Text extraction failed: ${textExtractionError.message}`,
+          success: false
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
     
     // Testing both API endpoints to see which one works
     const apiEndpoints = [
@@ -343,7 +388,42 @@ export async function onRequest(context) {
   }
 }
 
-// Function to generate a diagnostic response
+/**
+ * Extracts text content from HTML
+ * This is a simple implementation using regex - for production use,
+ * consider a more robust HTML parser
+ */
+function extractTextFromHtml(html) {
+  // Remove all script and style elements
+  let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ');
+  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ');
+  
+  // Replace tags with spaces to preserve word boundaries
+  text = text.replace(/<[^>]+>/g, ' ');
+  
+  // Replace HTML entities
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  
+  // Replace multiple spaces with single space
+  text = text.replace(/\s+/g, ' ');
+  
+  // Trim the result
+  text = text.trim();
+  
+  // Limit length to avoid too much data
+  if (text.length > 10000) {
+    text = text.substring(0, 10000) + '... [truncated]';
+  }
+  
+  return text;
+}
+
+/**
+ * Function to generate a diagnostic response
+ */
 function generateDiagnosticResponse(context) {
   const diagnosticInfo = {
     envVars: Object.keys(context.env),

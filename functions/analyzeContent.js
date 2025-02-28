@@ -27,7 +27,8 @@ export async function onRequest(context) {
     const { url } = requestData;
     
     console.log('Request data received:', {
-      hasUrl: !!url
+      hasUrl: !!url,
+      url: url
     });
     
     // Check if required data was provided
@@ -48,17 +49,37 @@ export async function onRequest(context) {
     }
     
     // First, we need to get the text content from the page
+    console.log('Fetching page content from URL:', url);
+    
     // Let's call the renderSite function to get the page content
-    const renderResponse = await fetch(`${new URL(context.request.url).origin}/functions/renderSite?url=${encodeURIComponent(url)}&textOnly=true`);
+    const renderUrl = `${new URL(context.request.url).origin}/functions/renderSite?url=${encodeURIComponent(url)}&textOnly=true`;
+    console.log('Calling renderSite with URL:', renderUrl);
+    
+    const renderResponse = await fetch(renderUrl);
     
     if (!renderResponse.ok) {
-      throw new Error(`Failed to fetch page content: ${renderResponse.status} ${renderResponse.statusText}`);
+      const errorText = await renderResponse.text();
+      console.error('renderSite error response:', errorText);
+      throw new Error(`Failed to fetch page content: ${renderResponse.status} ${renderResponse.statusText} - ${errorText}`);
     }
     
-    const renderData = await renderResponse.json();
+    let renderData;
+    try {
+      renderData = await renderResponse.json();
+      console.log('renderSite response parsed:', {
+        success: renderData.success,
+        hasPageContent: !!renderData.pageContent,
+        contentLength: renderData.pageContent ? renderData.pageContent.length : 0
+      });
+    } catch (parseError) {
+      console.error('Error parsing renderSite response:', parseError);
+      const responseText = await renderResponse.text();
+      console.error('Raw response from renderSite:', responseText.substring(0, 500));
+      throw new Error(`Failed to parse renderSite response: ${parseError.message}`);
+    }
     
     if (!renderData.success || !renderData.pageContent) {
-      throw new Error('Failed to extract page content');
+      throw new Error('Failed to extract page content: ' + (renderData.error || 'No content returned'));
     }
     
     const pageContent = renderData.pageContent;
