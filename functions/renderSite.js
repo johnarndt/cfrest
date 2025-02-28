@@ -7,17 +7,22 @@ export async function onRequest(context) {
   const url = new URL(context.request.url);
   const targetUrl = url.searchParams.get('url');
   
-  // Check if a URL was provided
+  // Validate the URL
   if (!targetUrl) {
-    return new Response(JSON.stringify({ error: 'No URL provided' }), {
+    return new Response(JSON.stringify({
+      error: 'Missing URL parameter',
+      success: false
+    }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
   }
-
+  
+  console.log('Rendering site:', targetUrl);
+  
   try {
     // Define the API URL according to Cloudflare's documentation
-    const browserRenderingApiUrl = `https://browser-rendering.host.cloudflare.com/api/screenshot`;
+    const browserRenderingApiUrl = `https://browser-rendering.cloudflare.com/screenshot`;
     
     // Prepare the request body with options specified in Cloudflare's documentation
     const requestBody = {
@@ -59,7 +64,9 @@ export async function onRequest(context) {
     const response = await fetch(browserRenderingApiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${context.env.CLOUDFLARE_API_TOKEN}`,
+        'X-Auth-Email': 'none',
+        'X-Auth-Key': context.env.CLOUDFLARE_API_TOKEN,
+        'X-Account-ID': context.env.CLOUDFLARE_ACCOUNT_ID,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
