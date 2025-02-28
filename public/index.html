@@ -168,5 +168,43 @@
   </div>
 
   <script src="js/app.js"></script>
+  
+  <!-- Debug script to test DOM events -->
+  <script>
+    // Verify the DOM after everything loads
+    window.addEventListener('load', function() {
+      console.log('Window fully loaded');
+      
+      // Test direct click handler
+      const testBtn = document.getElementById('generate-btn');
+      if (testBtn) {
+        console.log('Generate button found in load event');
+        
+        // Add a secondary click monitor
+        testBtn.addEventListener('click', function() {
+          console.log('Secondary button click handler triggered');
+        });
+        
+        // Create direct visual feedback on window load
+        testBtn.style.border = '2px solid green';
+        
+        // Test programmatic click 
+        setTimeout(function() {
+          console.log('Attempting to click button programmatically');
+          // Only click if there's a URL input
+          const urlValue = document.getElementById('url-input').value;
+          if (!urlValue) {
+            document.getElementById('url-input').value = 'https://example.com';
+          }
+        }, 2000);
+      } else {
+        console.error('Button not found in load event!');
+        
+        // Try querying with querySelector
+        const altBtn = document.querySelector('#generate-btn');
+        console.log('Alternative button query result:', altBtn);
+      }
+    });
+  </script>
 </body>
 </html>

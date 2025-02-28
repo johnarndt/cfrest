@@ -8,6 +8,18 @@ const errorText = document.getElementById('error-text');
 const platformButtons = document.querySelectorAll('.platform-btn');
 const platformPreviews = document.querySelectorAll('.platform-preview');
 
+// Debug: Log DOM elements to verify they're found
+console.log('DOM Elements loaded:', { 
+  urlInput: !!urlInput, 
+  generateBtn: !!generateBtn,
+  loading: !!loading,
+  previewContainer: !!previewContainer,
+  errorContainer: !!errorContainer,
+  errorText: !!errorText,
+  platformButtonsCount: platformButtons.length,
+  platformPreviewsCount: platformPreviews.length
+});
+
 // Store generated data
 let generatedData = {
   url: '',
@@ -18,39 +30,36 @@ let generatedData = {
   seoContent: null
 };
 
-// Social platform preview elements
-const platformData = {
-  twitter: {
-    image: document.getElementById('twitter-image'),
-    title: document.getElementById('twitter-title'),
-    description: document.getElementById('twitter-description'),
-    url: document.getElementById('twitter-url'),
-    copyBtn: document.getElementById('copy-twitter'),
-    downloadBtn: document.getElementById('download-twitter'),
-    width: 1200,
-    height: 628
-  },
-  linkedin: {
-    image: document.getElementById('linkedin-image'),
-    title: document.getElementById('linkedin-title'),
-    description: document.getElementById('linkedin-description'),
-    url: document.getElementById('linkedin-url'),
-    copyBtn: document.getElementById('copy-linkedin'),
-    downloadBtn: document.getElementById('download-linkedin'),
-    width: 1200,
-    height: 628
-  },
-  facebook: {
-    image: document.getElementById('facebook-image'),
-    title: document.getElementById('facebook-title'),
-    description: document.getElementById('facebook-description'),
-    url: document.getElementById('facebook-url'),
-    copyBtn: document.getElementById('copy-facebook'),
-    downloadBtn: document.getElementById('download-facebook'),
-    width: 1200,
-    height: 630
+// Document ready event
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM fully loaded');
+  
+  // Debug: Explicitly check if the button exists
+  if (generateBtn) {
+    console.log('Generate button found, adding event listener...');
+    
+    // Add click event with visual feedback
+    generateBtn.addEventListener('click', function(e) {
+      console.log('Generate button clicked!');
+      generateBtn.classList.add('clicked');
+      setTimeout(() => generateBtn.classList.remove('clicked'), 200);
+      generatePreviews();
+    });
+  } else {
+    console.error('Generate button not found!');
   }
-};
+  
+  // Debug: Test all event listeners
+  if (platformButtons) {
+    platformButtons.forEach((button, index) => {
+      console.log(`Adding event listener to platform button ${index}`);
+      button.addEventListener('click', () => {
+        console.log(`Platform button ${index} clicked`);
+        switchTab(button.dataset.platform);
+      });
+    });
+  }
+});
 
 // Event Listeners
 generateBtn.addEventListener('click', generatePreviews);
@@ -68,22 +77,28 @@ for (const platform in platformData) {
 
 // Main function to generate previews
 async function generatePreviews() {
+  console.log('generatePreviews function called');
+  
   // Get the URL from the input
   const url = urlInput.value.trim();
+  console.log('Input URL:', url);
   
   // Validate URL
   if (!isValidUrl(url)) {
+    console.warn('URL validation failed');
     showError('Please enter a valid URL');
     return;
   }
   
   try {
+    console.log('Starting preview generation process...');
+    
     // Show loading indicator
     loading.style.display = 'flex';
+    console.log('Loading indicator displayed');
+    
     previewContainer.style.display = 'none';
     errorContainer.style.display = 'none';
-    
-    console.log('Generating preview for URL:', url);
     
     // Reset stored data
     generatedData = {
@@ -95,13 +110,21 @@ async function generatePreviews() {
       seoContent: null
     };
     
+    console.log('Calling fetchMetadata API...');
+    
     // Step 1: Fetch metadata from the URL
     const metadata = await fetchMetadata(url);
+    console.log('Metadata received:', metadata);
+    
     generatedData.title = metadata.title;
     generatedData.description = metadata.description;
     
+    console.log('Calling generateSEO API...');
+    
     // Step 2: Generate SEO content using Groq
     const seoContent = await generateSEO(url, metadata.title, metadata.description);
+    console.log('SEO content received:', seoContent);
+    
     generatedData.seoContent = seoContent;
     
     // Step 3: Generate screenshots for each platform
@@ -116,9 +139,12 @@ async function generatePreviews() {
     );
     
     // Wait for all screenshots to be generated
+    console.log('Waiting for all screenshot promises to resolve...');
     await Promise.all(screenshotPromises);
+    console.log('All screenshot promises resolved');
     
     // Update the UI with generated content
+    console.log('Updating UI with generated content');
     updateUI();
     
     // Hide loading indicator and show preview
@@ -128,6 +154,7 @@ async function generatePreviews() {
     // Switch to Twitter tab by default
     switchTab('twitter');
     
+    console.log('Preview generation completed successfully');
   } catch (error) {
     console.error('Error generating previews:', error);
     showError(`Failed to generate previews: ${error.message}`);
@@ -137,14 +164,29 @@ async function generatePreviews() {
 
 // Fetch metadata from the URL
 async function fetchMetadata(url) {
-  const response = await fetch(`/fetchMetadata?url=${encodeURIComponent(url)}`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch metadata');
+  console.log(`Fetching metadata for ${url}...`);
+  try {
+    const response = await fetch(`/fetchMetadata?url=${encodeURIComponent(url)}`);
+    console.log('Metadata API response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Metadata API error response:', errorText);
+      throw new Error(`Failed to fetch metadata: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Metadata API response data:', data);
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to fetch metadata');
+    }
+    
+    return data.metadata;
+  } catch (error) {
+    console.error('Error in fetchMetadata:', error);
+    throw error;
   }
-  
-  return await response.json();
 }
 
 // Generate SEO content using Groq's API
@@ -428,6 +470,7 @@ function downloadImage(platform) {
 
 // Show error message
 function showError(message) {
+  console.log('Showing error message:', message);
   errorText.textContent = message;
   errorContainer.style.display = 'block';
 }
