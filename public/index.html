@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Screenshot Tool</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-camera"></i> Web Screenshot Tool
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
+                            <i class="fas fa-info-circle"></i> About
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Flash Messages -->
+        <div id="flash-messages"></div>
+
+        <!-- Main Content -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-camera"></i> Take Screenshot</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="screenshot-form">
+                            <div class="mb-3">
+                                <label for="screenshotUrl" class="form-label">Website URL</label>
+                                <input type="url" class="form-control" id="screenshotUrl" name="url" 
+                                    placeholder="https://example.com" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Take Screenshot
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-file-pdf"></i> Generate PDF</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="pdf-form">
+                            <div class="mb-3">
+                                <label for="pdfUrl" class="form-label">Website URL</label>
+                                <input type="url" class="form-control" id="pdfUrl" name="url" 
+                                    placeholder="https://example.com" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-file-pdf"></i> Generate PDF
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-code"></i> Scrape Elements</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="scrape-form">
+                            <div class="mb-3">
+                                <label for="scrapeUrl" class="form-label">Website URL</label>
+                                <input type="url" class="form-control" id="scrapeUrl" name="url" 
+                                    placeholder="https://example.com" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="selector" class="form-label">CSS Selector</label>
+                                <input type="text" class="form-control" id="selector" name="selector" 
+                                    placeholder="h1, .class-name, #id-name" required>
+                            </div>
+                            <button type="submit" class="btn btn-info text-white">
+                                <i class="fas fa-code"></i> Scrape Elements
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-file-code"></i> Get HTML Content</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="html-form">
+                            <div class="mb-3">
+                                <label for="htmlUrl" class="form-label">Website URL</label>
+                                <input type="url" class="form-control" id="htmlUrl" name="url" 
+                                    placeholder="https://example.com" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-file-code"></i> Get HTML
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Gallery -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fas fa-images"></i> Captured Screenshots & PDFs</h5>
+            </div>
+            <div class="card-body">
+                <div id="results-container">
+                    <div class="text-center py-5">
+                        <i class="fas fa-camera fa-4x text-muted mb-3"></i>
+                        <p class="lead">No screenshots or PDFs captured yet.</p>
+                        <p>Enter a URL above to create your first capture!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">About Web Screenshot Tool</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This web application uses the Cloudflare Browser Rendering REST API to capture screenshots, 
+                    generate PDFs, scrape elements, and fetch HTML content from websites.</p>
+                    
+                    <h6>Features:</h6>
+                    <ul>
+                        <li>Capture full-page screenshots</li>
+                        <li>Generate PDF documents</li>
+                        <li>Scrape HTML elements using CSS selectors</li>
+                        <li>Fetch rendered HTML content</li>
+                    </ul>
+                    
+                    <h6>Technology:</h6>
+                    <ul>
+                        <li>Frontend: Bootstrap 5, JavaScript</li>
+                        <li>API: Cloudflare Browser Rendering REST API</li>
+                        <li>Deployment: Cloudflare Pages</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Templates -->
+    <template id="image-template">
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <img src="" class="card-img-top result-img" alt="Screenshot">
+                <div class="card-body">
+                    <h6 class="card-title text-truncate result-url"></h6>
+                    <p class="card-text small">
+                        <span class="text-muted">Created: </span>
+                        <span class="result-time"></span><br>
+                        <span class="text-muted">Type: </span>
+                        <span class="result-type"></span>
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between">
+                        <a href="#" class="btn btn-sm btn-primary result-link" target="_blank">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <button class="btn btn-sm btn-danger result-delete">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="pdf-template">
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="text-center pt-3">
+                    <i class="fas fa-file-pdf fa-5x text-danger"></i>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title text-truncate result-url"></h6>
+                    <p class="card-text small">
+                        <span class="text-muted">Created: </span>
+                        <span class="result-time"></span><br>
+                        <span class="text-muted">Type: </span>
+                        <span class="result-type"></span>
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between">
+                        <a href="#" class="btn btn-sm btn-primary result-link" target="_blank">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <button class="btn btn-sm btn-danger result-delete">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

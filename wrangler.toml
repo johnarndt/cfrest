@@ -1,0 +1,18 @@
+# Cloudflare Pages configuration
+name = "cfrest-johnarndt"
+main = "public/index.html"
+compatibility_date = "2023-08-01"
+
+[build]
+command = ""
+output_dir = "public"
+publish_dir = "public"
+
+[site]
+bucket = "./public"
+
+# Define environment variables 
+[vars]
+# Will be set in Cloudflare dashboard
+# CLOUDFLARE_API_TOKEN = "your-api-token"
+# CLOUDFLARE_ACCOUNT_ID = "your-account-id"
