@@ -30,6 +30,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Add standalone analyzer button functionality
+    document.getElementById('analyze-standalone-btn').addEventListener('click', function() {
+        const url = document.getElementById('analyzerUrl').value;
+        if (url) {
+            analyzeWebsite(url);
+        } else {
+            showFlashMessage('Please enter a URL to analyze', 'error');
+        }
+    });
+    
     // Add analyze button functionality to results
     document.addEventListener('click', function(e) {
         if (e.target && e.target.classList.contains('analyze-btn')) {
@@ -243,6 +253,9 @@ async function analyzeWebsite(url, resultId) {
         // Show loading
         showFlashMessage('Analyzing website with Groq AI...', 'info');
         
+        // Format URL if needed
+        const formattedUrl = formatUrl(url);
+        
         // Call the API
         const response = await fetch('/api/analyze', {
             method: 'POST',
@@ -250,7 +263,7 @@ async function analyzeWebsite(url, resultId) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                url: url
+                url: formattedUrl
             })
         });
         
@@ -265,10 +278,21 @@ async function analyzeWebsite(url, resultId) {
         const analysisText = analysisData.choices[0].message.content;
         
         // Update the results with analysis
-        updateResultWithAnalysis(resultId, analysisText);
+        if (resultId !== undefined) {
+            updateResultWithAnalysis(resultId, analysisText);
+        } else {
+            // Create a standalone analysis entry
+            saveResult({
+                url: formattedUrl,
+                type: 'analysis',
+                analysis: analysisText,
+                timestamp: new Date().toISOString()
+            });
+            loadSavedResults();
+        }
         
         // Show success message
-        showFlashMessage(`Analysis of ${url} completed!`, 'success');
+        showFlashMessage(`Analysis of ${formattedUrl} completed!`, 'success');
         
     } catch (error) {
         showFlashMessage(`Error analyzing website: ${error.message}`, 'error');
@@ -320,6 +344,14 @@ function loadSavedResults() {
                     <a href="${result.dataUrl}" class="btn btn-sm btn-primary" download="page.pdf">Download PDF</a>
                 </div>
             `;
+        } else if (result.type === 'analysis') {
+            contentHTML = `
+                <div class="text-center">
+                    <i class="fas fa-chart-line fa-4x text-success mb-2"></i>
+                    <p>Analysis Result</p>
+                    <div class="analysis-content">${result.analysis.replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
         }
         
         // Add analysis section if it exists
@@ -349,7 +381,7 @@ function loadSavedResults() {
                     </div>
                     <div class="card-footer bg-white d-flex justify-content-between align-items-center">
                         <small class="text-muted">${new Date(result.timestamp).toLocaleString()}</small>
-                        ${!result.analysis ? `
+                        ${!result.analysis && result.type !== 'analysis' ? `
                             <button class="btn btn-sm btn-success analyze-btn" data-result-id="${index}">
                                 <i class="fas fa-search"></i> Analyze
                             </button>

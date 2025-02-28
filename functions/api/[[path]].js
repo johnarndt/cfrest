@@ -76,6 +76,8 @@ export async function onRequest(context) {
       const errorText = await response.text();
       console.error(`API error: ${response.status} ${response.statusText}`);
       console.error(`Error details: ${errorText}`);
+      
+      // Return a more detailed error response
       return new Response(
         JSON.stringify({ 
           error: `API error: ${response.status} ${response.statusText}`, 
@@ -91,8 +93,15 @@ export async function onRequest(context) {
       );
     }
     
+    // Get content type to properly handle binary content
+    const contentType = response.headers.get('Content-Type') || '';
+    console.log(`Response content type: ${contentType}`);
+    
+    // Handle content based on type
+    let responseBody = response.body;
+    
     // Create a new response with CORS headers
-    const originalResponse = new Response(response.body, response);
+    const originalResponse = new Response(responseBody, response);
     const newHeaders = new Headers(originalResponse.headers);
     newHeaders.set('Access-Control-Allow-Origin', '*');
     
