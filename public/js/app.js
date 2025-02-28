@@ -14,16 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         generatePDF();
     });
-
-    document.getElementById('scrape-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        scrapeElements();
-    });
-
-    document.getElementById('html-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        getHtmlContent();
-    });
     
     // Add test environment button functionality
     document.getElementById('test-env-btn').addEventListener('click', function() {
@@ -184,167 +174,12 @@ async function generatePDF() {
     }
 }
 
-// Scrape elements
-async function scrapeElements() {
-    const url = document.getElementById('scrapeUrl').value;
-    const selector = document.getElementById('selector').value;
-    
-    if (!url || !selector) {
-        showFlashMessage('Please enter a URL and CSS selector', 'error');
-        return;
+// Helper function to format URLs
+function formatUrl(url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return 'https://' + url;
     }
-
-    try {
-        // Show loading
-        showFlashMessage('Scraping elements...', 'info');
-        
-        // Format URL if needed
-        const formattedUrl = formatUrl(url);
-        
-        // Call the API
-        const response = await fetch('/api/scrape', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url: formattedUrl,
-                selector: selector
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Error: ${response.status} ${response.statusText}`);
-        }
-        
-        // Get the JSON response
-        const data = await response.json();
-        
-        // Create a dialog to show the elements
-        const elementsHtml = data.elements.map(el => `<div class="border p-2 mb-2">${el}</div>`).join('');
-        
-        // Create and show modal with elements
-        const modalHtml = `
-            <div class="modal fade" id="elementsModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-info text-white">
-                            <h5 class="modal-title">Scraped Elements</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Found ${data.elements.length} elements matching selector "${selector}" on ${formattedUrl}</p>
-                            <div class="elements-container overflow-auto" style="max-height: 400px;">
-                                ${elementsHtml}
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add modal to body
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalHtml;
-        document.body.appendChild(modalContainer);
-        
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('elementsModal'));
-        modal.show();
-        
-        // Remove modal on hide
-        document.getElementById('elementsModal').addEventListener('hidden.bs.modal', function() {
-            document.body.removeChild(modalContainer);
-        });
-        
-        // Show success message
-        showFlashMessage(`Found ${data.elements.length} elements matching "${selector}"`, 'success');
-    } catch (error) {
-        showFlashMessage(`Error scraping elements: ${error.message}`, 'error');
-        console.error(error);
-    }
-}
-
-// Get HTML content
-async function getHtmlContent() {
-    const url = document.getElementById('htmlUrl').value;
-    
-    if (!url) {
-        showFlashMessage('Please enter a URL', 'error');
-        return;
-    }
-
-    try {
-        // Show loading
-        showFlashMessage('Fetching HTML content...', 'info');
-        
-        // Format URL if needed
-        const formattedUrl = formatUrl(url);
-        
-        // Call the API
-        const response = await fetch('/api/html', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url: formattedUrl
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Error: ${response.status} ${response.statusText}`);
-        }
-        
-        // Get the text response
-        const html = await response.text();
-        
-        // Create a dialog to show the HTML
-        const modalHtml = `
-            <div class="modal fade" id="htmlModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-success text-white">
-                            <h5 class="modal-title">HTML Content</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>HTML content from ${formattedUrl}</p>
-                            <div class="html-container bg-light p-3 overflow-auto" style="max-height: 400px;">
-                                <pre>${escapeHtml(html)}</pre>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add modal to body
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalHtml;
-        document.body.appendChild(modalContainer);
-        
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('htmlModal'));
-        modal.show();
-        
-        // Remove modal on hide
-        document.getElementById('htmlModal').addEventListener('hidden.bs.modal', function() {
-            document.body.removeChild(modalContainer);
-        });
-        
-        // Show success message
-        showFlashMessage(`HTML content fetched successfully!`, 'success');
-    } catch (error) {
-        showFlashMessage(`Error fetching HTML: ${error.message}`, 'error');
-        console.error(error);
-    }
+    return url;
 }
 
 // Test environment variables
@@ -378,14 +213,6 @@ async function testEnvironment() {
         testPre.textContent = `Error checking environment: ${error.message}`;
         testPre.classList.add('text-danger');
     }
-}
-
-// Helper function to format URLs
-function formatUrl(url) {
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        return 'https://' + url;
-    }
-    return url;
 }
 
 // Helper function to escape HTML
@@ -491,20 +318,6 @@ function loadSavedResults() {
                     <i class="fas fa-file-pdf fa-4x text-danger mb-2"></i>
                     <p>PDF Generated</p>
                     <a href="${result.dataUrl}" class="btn btn-sm btn-primary" download="page.pdf">Download PDF</a>
-                </div>
-            `;
-        } else if (result.type === 'scrape') {
-            contentHTML = `
-                <div class="border rounded p-3 bg-light">
-                    <h6>Scraped Elements:</h6>
-                    <pre class="mb-0">${escapeHtml(result.content)}</pre>
-                </div>
-            `;
-        } else if (result.type === 'html') {
-            contentHTML = `
-                <div class="border rounded p-3 bg-light">
-                    <h6>HTML Content:</h6>
-                    <pre class="mb-0 text-wrap">${escapeHtml(result.content.substring(0, 200))}...</pre>
                 </div>
             `;
         }
