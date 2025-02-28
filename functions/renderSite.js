@@ -3,12 +3,40 @@
  * https://developers.cloudflare.com/browser-rendering/rest-api/screenshot-endpoint/
  */
 export async function onRequest(context) {
-  // Log all available environment variables (keys only for security)
-  console.log('Available environment variables:', Object.keys(context.env));
-  
   // Get the URL from the request - using URL parameters instead of body
   const url = new URL(context.request.url);
   const targetUrl = url.searchParams.get('url');
+  const diagnosticsMode = url.searchParams.get('diagnostics') === 'true';
+  
+  // If diagnostics mode is enabled, return detailed environment info
+  if (diagnosticsMode) {
+    return generateDiagnosticResponse(context);
+  }
+  
+  // Log all available environment variables (keys only for security)
+  const envKeys = Object.keys(context.env);
+  console.log('Available environment variables:', envKeys);
+  
+  // Detailed check for API credentials
+  const credentialStatus = {
+    api_token: {
+      exists: typeof context.env.CLOUDFLARE_API_TOKEN === 'string',
+      length: context.env.CLOUDFLARE_API_TOKEN?.length || 0,
+      format: context.env.CLOUDFLARE_API_TOKEN?.startsWith('bearer_') ? 'likely_valid' : 
+              context.env.CLOUDFLARE_API_TOKEN?.length > 30 ? 'possibly_valid' : 'likely_invalid'
+    },
+    account_id: {
+      exists: typeof context.env.CLOUDFLARE_ACCOUNT_ID === 'string',
+      length: context.env.CLOUDFLARE_ACCOUNT_ID?.length || 0,
+      format: /^[a-f0-9]{32}$/i.test(context.env.CLOUDFLARE_ACCOUNT_ID || '') ? 'likely_valid' : 'likely_invalid'
+    },
+    r2_binding: {
+      exists: typeof context.env.PREVIEW_IMAGES !== 'undefined',
+      type: typeof context.env.PREVIEW_IMAGES
+    }
+  };
+  
+  console.log('Credential status check:', JSON.stringify(credentialStatus));
   
   // Validate the URL
   if (!targetUrl) {
@@ -311,4 +339,28 @@ export async function onRequest(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+}
+
+// Function to generate a diagnostic response
+function generateDiagnosticResponse(context) {
+  const diagnosticInfo = {
+    envVars: Object.keys(context.env),
+    requestUrl: context.request.url,
+    requestHeaders: Object.keys(context.request.headers),
+    workerCwd: process.cwd(),
+    nodeVersion: process.version,
+    v8Version: process.versions.v8,
+    osPlatform: process.platform,
+    osArch: process.arch,
+    osRelease: process.release,
+    osUptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    cpuUsage: process.cpuUsage(),
+  };
+
+  return new Response(JSON.stringify(diagnosticInfo, null, 2), {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 }
