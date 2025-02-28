@@ -100,10 +100,33 @@ async function analyzePage() {
     analysisData.url = url;
     
     // Get screenshot first
-    await generateScreenshot(url);
+    let screenshotSuccess = false;
+    try {
+      await generateScreenshot(url);
+      screenshotSuccess = true;
+    } catch (screenshotError) {
+      console.error("Screenshot generation failed:", screenshotError);
+      // We'll continue with content analysis even if screenshot fails
+    }
     
     // Then analyze the content with Groq
-    await analyzeContent(url);
+    let contentSuccess = false;
+    try {
+      if (screenshotSuccess) {
+        await analyzeContent(url);
+        contentSuccess = true;
+      } else {
+        throw new Error("Skipping content analysis due to screenshot failure");
+      }
+    } catch (contentError) {
+      console.error("Content analysis failed:", contentError);
+      // If content analysis fails but we have a screenshot, we can still show that
+    }
+    
+    // If neither operation succeeded, throw an error
+    if (!screenshotSuccess && !contentSuccess) {
+      throw new Error("Both screenshot generation and content analysis failed");
+    }
     
     // Update UI with all the gathered data
     updateUI();
@@ -129,16 +152,36 @@ async function generateScreenshot(url) {
     const response = await fetch(`/functions/renderSite?url=${encodeURIComponent(url)}`);
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server error response:", errorText);
       throw new Error(`Server returned ${response.status}: ${response.statusText}`);
     }
     
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+      console.log("Screenshot response data:", data);
+    } catch (parseError) {
+      console.error("Failed to parse response:", parseError);
+      const responseText = await response.text();
+      console.error("Raw response:", responseText.substring(0, 500));
+      throw new Error(`Invalid JSON response: ${parseError.message}`);
+    }
     
     if (!data.success) {
       throw new Error(data.error || "Failed to generate screenshot");
     }
     
-    analysisData.screenshot = data.screenshotUrl;
+    // Check the structure of the response to handle different formats
+    if (data.result && data.result.screenshotUrl) {
+      analysisData.screenshot = data.result.screenshotUrl;
+    } else if (data.screenshotUrl) {
+      analysisData.screenshot = data.screenshotUrl;
+    } else {
+      console.warn("Unexpected response structure:", data);
+      throw new Error("Screenshot data not found in response");
+    }
+    
     console.log("Screenshot generated:", analysisData.screenshot);
     
     return true;
@@ -164,10 +207,21 @@ async function analyzeContent(url) {
     });
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server error response:", errorText);
       throw new Error(`Server returned ${response.status}: ${response.statusText}`);
     }
     
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+      console.log("Content analysis response:", data);
+    } catch (parseError) {
+      console.error("Failed to parse response:", parseError);
+      const responseText = await response.text();
+      console.error("Raw response:", responseText.substring(0, 500));
+      throw new Error(`Invalid JSON response: ${parseError.message}`);
+    }
     
     if (!data.success) {
       throw new Error(data.error || "Failed to analyze content");
