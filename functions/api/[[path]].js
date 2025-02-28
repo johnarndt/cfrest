@@ -97,18 +97,25 @@ export async function onRequest(context) {
     const contentType = response.headers.get('Content-Type') || '';
     console.log(`Response content type: ${contentType}`);
     
-    // Handle content based on type
-    let responseBody = response.body;
+    // Log size of response for debugging
+    const responseSize = response.headers.get('Content-Length') || 'unknown';
+    console.log(`Response size: ${responseSize} bytes`);
     
     // Create a new response with CORS headers
-    const originalResponse = new Response(responseBody, response);
-    const newHeaders = new Headers(originalResponse.headers);
+    const newHeaders = new Headers();
     newHeaders.set('Access-Control-Allow-Origin', '*');
     
-    // Return the response with CORS headers
-    return new Response(originalResponse.body, {
-      status: originalResponse.status,
-      statusText: originalResponse.statusText,
+    // Preserve the content type and other important headers
+    for (const [key, value] of response.headers.entries()) {
+      if (key.toLowerCase() !== 'access-control-allow-origin') {
+        newHeaders.set(key, value);
+      }
+    }
+    
+    // Return the response with CORS headers, preserving the original body and content type
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
       headers: newHeaders
     });
   } catch (error) {

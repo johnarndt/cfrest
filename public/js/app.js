@@ -93,8 +93,17 @@ async function takeScreenshot() {
             },
             body: JSON.stringify({
                 url: formattedUrl,
-                width: 1280,
-                height: 720
+                screenshotOptions: {
+                    fullPage: true
+                },
+                viewport: {
+                    width: 1280,
+                    height: 720
+                },
+                gotoOptions: {
+                    waitUntil: "networkidle0",
+                    timeout: 30000
+                }
             })
         });
         
