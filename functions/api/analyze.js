@@ -1,128 +1,110 @@
 // Groq AI integration for website analysis
-export async function onRequest(context) {
-  const { request, env } = context;
-  
+export async function onRequestPost(context) {
   try {
-    // Only allow POST requests
-    if (request.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      });
-    }
+    // Get request data
+    const requestData = await context.request.json();
     
-    // Get request body
-    const requestData = await request.json();
-    
-    // Validate request data
+    // Check for required URL
     if (!requestData.url) {
-      return new Response(JSON.stringify({ error: 'URL is required' }), {
-        status: 400,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      });
+      return new Response(
+        JSON.stringify({ error: 'URL is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
     
-    // Check if Groq API key is set
-    if (!env.GROQ_API_KEY) {
-      console.error("GROQ_API_KEY is not set");
-      return new Response(JSON.stringify({ error: "Groq API token not configured" }), { 
-        status: 500, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*' 
-        } 
-      });
+    // Get API key from environment
+    const apiKey = context.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'GROQ_API_KEY environment variable is not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
     
-    // Prepare a message for Groq with screenshot if provided
+    // Construct the user message based on whether we have a screenshot
     let userMessage = `Analyze this website for SEO, performance, and Cloudflare optimization opportunities: ${requestData.url}. Organize your response in sections with emoji icons.`;
     
-    // If screenshot data is included, modify the message
     if (requestData.screenshot) {
-      console.log("Screenshot data included in request");
       userMessage = `Analyze this website for SEO, performance, and Cloudflare optimization opportunities: ${requestData.url}. 
-      
 A screenshot of the website is attached. Please include a "Visual Analysis 📸" section in your response that analyzes the visual layout, user interface design, and any visual elements visible in the screenshot.
 
-The screenshot data is provided in base64 format: ${requestData.screenshot.substring(0, 100)}... (truncated for message size).
+Please organize your response in clear sections with emoji icons for each category, such as:
+- SEO Analysis 🔍
+- Performance Optimization ⚡
+- Visual Design 📸
+- Cloudflare Recommendations 🌩️
+- Content Quality 📝
+- User Experience 🌟
 
-Organize your response in sections with emoji icons, including:
-1. Overall Assessment 🌟
-2. SEO Analysis 🔍
-3. Performance Analysis ⚡
-4. Visual Analysis 📸
-5. Cloudflare Optimization Tips 🌩️
-6. Recommendations 📝`;
+Be specific with your suggestions and explain why they would help improve the website.`;
     }
+    
+    // Prepare the API request to Groq
+    const apiRequest = {
+      model: "llama3-70b-8192",
+      messages: [
+        {
+            role: "system", 
+            content: "You are a professional SEO and website optimization expert with strong visual design analysis skills. Analyze the website URL provided and give detailed feedback on SEO, performance, visual design, and Cloudflare-specific optimizations."
+        },
+        {
+            role: "user", 
+            content: userMessage
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 4000,
+      top_p: 1,
+      stream: false,
+    };
     
     // Call the Groq API
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model: "llama3-70b-8192",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional SEO and website optimization expert with strong visual design analysis skills. Analyze the website URL provided and give detailed feedback on SEO, performance, visual design, and Cloudflare-specific optimizations."
-          },
-          {
-            role: "user",
-            content: userMessage
-          }
-        ],
-        temperature: 0.5,
-        max_tokens: 1024
-      })
+      body: JSON.stringify(apiRequest)
     });
     
-    // Check if the Groq API call was successful
-    if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      console.error(`Groq API error: ${groqResponse.status} ${groqResponse.statusText}`);
-      console.error(`Error details: ${errorText}`);
-      
-      return new Response(JSON.stringify({ 
-        error: `Groq API error: ${groqResponse.status} ${groqResponse.statusText}`, 
-        details: errorText 
-      }), { 
-        status: groqResponse.status, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*' 
-        } 
-      });
+    // Check for successful response
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Groq API error (${response.status}): ${errorText}`);
     }
     
-    // Parse and return Groq's response
-    const analysisData = await groqResponse.json();
+    // Get the analysis result
+    const result = await response.json();
     
-    return new Response(JSON.stringify(analysisData), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*' 
-      }
-    });
+    // Extract and format the analysis content
+    const analysisText = result.choices[0].message.content;
     
+    // Format the analysis for HTML display
+    const formattedAnalysis = analysisText
+      .replace(/\n## (.*?)📸(.*?)\n/g, '<h5><i class="fas fa-camera"></i> $1$2</h5>')
+      .replace(/\n## (.*?)🌟(.*?)\n/g, '<h5><i class="fas fa-star"></i> $1$2</h5>')
+      .replace(/\n## (.*?)🔍(.*?)\n/g, '<h5><i class="fas fa-search"></i> $1$2</h5>')
+      .replace(/\n## (.*?)⚡(.*?)\n/g, '<h5><i class="fas fa-bolt"></i> $1$2</h5>')
+      .replace(/\n## (.*?)🌩️(.*?)\n/g, '<h5><i class="fas fa-cloud"></i> $1$2</h5>')
+      .replace(/\n## (.*?)📝(.*?)\n/g, '<h5><i class="fas fa-clipboard"></i> $1$2</h5>')
+      .replace(/\n## (.*?)(.*?)\n/g, '<h5>$1$2</h5>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    
+    // Return the analysis result
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        analysis: formattedAnalysis 
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error(`Exception in analyze API: ${error.message}`);
-    console.error(error.stack);
-    
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*' 
-      }
-    });
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
