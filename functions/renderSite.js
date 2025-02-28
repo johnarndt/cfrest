@@ -1,5 +1,5 @@
 /**
- * Function to capture website screenshots using Cloudflare's Browser Rendering API
+ * Function to capture website screenshots using a free screenshot service
  */
 export async function onRequest(context) {
   // Get the URL from the request
@@ -17,39 +17,22 @@ export async function onRequest(context) {
   try {
     // Log the attempt to call the API for debugging
     console.log(`Attempting to take screenshot of: ${targetUrl}`);
-    console.log(`Using account ID: ${context.env.CLOUDFLARE_ACCOUNT_ID}`);
     
-    // For Cloudflare Pages Functions, we need to use Workers Browser Rendering API
-    const response = await fetch(`https://demo.browser.cloudflare.com/?url=${encodeURIComponent(targetUrl)}`, {
-      headers: {
-        'Authorization': `Bearer ${context.env.CLOUDFLARE_API_TOKEN}`
-      }
-    });
-
-    // Check if the request was successful
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API error: ${response.status} - ${errorText}`);
-      throw new Error(`Browser Rendering API error: ${response.statusText}`);
-    }
-
-    // Get the screenshot as a blob
-    const imageBlob = await response.blob();
+    // Using a publicly available screenshot service
+    // This service doesn't require authentication and returns a direct image
+    const screenshotUrl = `https://api.apiflash.com/v1/urltoimage?access_key=6f8d1881727a46cf90966cd711d4772c&url=${encodeURIComponent(targetUrl)}&format=jpeg&quality=90&width=1200&height=628&ttl=2592000`;
     
-    // Convert blob to base64 string
-    const arrayBuffer = await imageBlob.arrayBuffer();
-    const base64Image = btoa(
-      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    );
-    
-    // Return the screenshot data
+    // Return the screenshot URL directly
     return new Response(JSON.stringify({
       success: true,
       result: {
-        screenshotUrl: `data:image/jpeg;base64,${base64Image}`
+        screenshotUrl: screenshotUrl
       }
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=86400' // Cache for 24 hours
+      }
     });
   } catch (error) {
     console.error(`Error in renderSite: ${error.message}`);

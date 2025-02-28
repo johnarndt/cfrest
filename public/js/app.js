@@ -190,6 +190,23 @@ async function generateScreenshot(platform) {
       throw new Error(`Failed to generate ${platform} screenshot - missing screenshot URL`);
     }
     
+    // Check if the image loads correctly by preloading it
+    const imgPreload = new Image();
+    imgPreload.onload = () => {
+      console.log(`Screenshot for ${platform} loaded successfully`);
+    };
+    imgPreload.onerror = () => {
+      console.error(`Failed to load screenshot image for ${platform}`);
+      // Fall back to a placeholder on error
+      generatedData.screenshots[platform] = `https://via.placeholder.com/${width}x${height}?text=Screenshot+Unavailable`;
+      // Update UI immediately if we're on this platform tab
+      if (document.querySelector(`.tab-btn[data-platform="${platform}"]`).classList.contains('active')) {
+        platformData[platform].image.src = generatedData.screenshots[platform];
+      }
+    };
+    imgPreload.src = data.result.screenshotUrl;
+    
+    // Store the screenshot URL
     generatedData.screenshots[platform] = data.result.screenshotUrl;
   } catch (error) {
     console.error(`Error in generateScreenshot for ${platform}:`, error);
@@ -226,8 +243,16 @@ function updateUI() {
     // Set the screenshot image
     if (screenshots[platform]) {
       elements.image.src = screenshots[platform];
+      // Add error handling for images
+      elements.image.onerror = function() {
+        console.error(`Failed to load image for ${platform}`);
+        this.src = `https://via.placeholder.com/1200x630?text=Preview+Unavailable`;
+      };
     } else if (metadata && metadata.image) {
       elements.image.src = metadata.image;
+      elements.image.onerror = function() {
+        this.src = `https://via.placeholder.com/1200x630?text=No+Preview+Available`;
+      };
     } else {
       // Set a placeholder if no image available
       elements.image.src = 'https://via.placeholder.com/1200x630?text=No+Preview+Available';
