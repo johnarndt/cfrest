@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "routes": [
+    {
+      "pattern": "^/renderSite$",
+      "script": "renderSite"
+    },
+    {
+      "pattern": "^/fetchMetadata$",
+      "script": "fetchMetadata"
+    },
+    {
+      "pattern": "^/generateSEO$",
+      "script": "generateSEO"
+    },
+    {
+      "pattern": "^/storeScreenshot$",
+      "script": "storeScreenshot"
+    },
+    {
+      "pattern": "^/getScreenshot/([^/]+)$",
+      "script": "getScreenshot"
+    }
+  ]
+}

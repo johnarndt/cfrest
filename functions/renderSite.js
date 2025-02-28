@@ -76,12 +76,47 @@ export async function onRequest(context) {
     if (!data.screenshot) {
       throw new Error('No screenshot data returned from API');
     }
+
+    // Now store this image using our storage function for better download support
+    const platform = url.searchParams.get('platform') || 'default';
+    const storeResponse = await fetch(new URL('/storeScreenshot', context.request.url), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        imageData: `data:image/jpeg;base64,${data.screenshot}`,
+        url: targetUrl,
+        platform: platform
+      })
+    });
+
+    if (!storeResponse.ok) {
+      console.warn('Failed to store image, falling back to base64:', await storeResponse.text());
+      // If storage fails, fall back to base64 data URL
+      return new Response(JSON.stringify({
+        success: true,
+        result: {
+          screenshotUrl: `data:image/jpeg;base64,${data.screenshot}`,
+          downloadUrl: null
+        }
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+        }
+      });
+    }
+
+    // Get the stored image URL
+    const storeData = await storeResponse.json();
     
-    // Return the base64-encoded screenshot
+    // Return both the base64 for display and the download URL
     return new Response(JSON.stringify({
       success: true,
       result: {
-        screenshotUrl: `data:image/jpeg;base64,${data.screenshot}`
+        screenshotUrl: `data:image/jpeg;base64,${data.screenshot}`,
+        downloadUrl: storeData.imageUrl
       }
     }), {
       headers: { 

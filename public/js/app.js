@@ -4,9 +4,18 @@ const generateBtn = document.getElementById('generate-btn');
 const loading = document.getElementById('loading');
 const previewContainer = document.getElementById('preview-container');
 const errorContainer = document.getElementById('error-container');
-const errorText = document.getElementById('error-text');
-const tabButtons = document.querySelectorAll('.tab-btn');
+const platformButtons = document.querySelectorAll('.platform-btn');
 const platformPreviews = document.querySelectorAll('.platform-preview');
+
+// Store generated data
+const generatedData = {
+  url: '',
+  title: '',
+  description: '',
+  screenshots: {},
+  downloadUrls: {}, // New property to store download URLs
+  seoContent: null
+};
 
 // Social platform preview elements
 const platformData = {
@@ -42,17 +51,9 @@ const platformData = {
   }
 };
 
-// Store the generated data
-let generatedData = {
-  url: '',
-  metadata: null,
-  seoContent: null,
-  screenshots: {}
-};
-
 // Event Listeners
 generateBtn.addEventListener('click', generatePreviews);
-tabButtons.forEach(button => {
+platformButtons.forEach(button => {
   button.addEventListener('click', () => switchTab(button.dataset.platform));
 });
 
@@ -87,14 +88,17 @@ async function generatePreviews() {
     // Reset stored data
     generatedData = {
       url,
-      metadata: null,
-      seoContent: null,
-      screenshots: {}
+      title: '',
+      description: '',
+      screenshots: {},
+      downloadUrls: {},
+      seoContent: null
     };
     
     // Step 1: Fetch metadata from the URL
     const metadata = await fetchMetadata(url);
-    generatedData.metadata = metadata;
+    generatedData.title = metadata.title;
+    generatedData.description = metadata.description;
     
     // Step 2: Generate SEO content using Groq
     const seoContent = await generateSEO(url, metadata.title, metadata.description);
@@ -160,65 +164,109 @@ async function generateSEO(url, title, description) {
 
 // Generate screenshot for a specific platform
 async function generateScreenshot(platform) {
-  const { width, height } = platformData[platform];
-  const url = generatedData.url;
-  
-  console.log(`Generating screenshot for ${platform} with dimensions ${width}x${height}`);
-  
   try {
-    const response = await fetch(
-      `/renderSite?url=${encodeURIComponent(url)}`
-    );
-    
-    if (!response.ok) {
-      console.error(`Screenshot API response not OK: ${response.status}`);
-      const errorText = await response.text();
-      console.error(`Error text: ${errorText}`);
-      
-      try {
-        const error = JSON.parse(errorText);
-        throw new Error(error.error || `Failed to generate ${platform} screenshot`);
-      } catch (e) {
-        throw new Error(`Failed to generate ${platform} screenshot: ${response.status} ${response.statusText}`);
-      }
+    // Configure screenshot parameters based on platform
+    let width, height;
+    switch (platform) {
+      case 'twitter':
+        width = 1200;
+        height = 628;
+        break;
+      case 'linkedin':
+        width = 1200;
+        height = 627;
+        break;
+      case 'facebook':
+        width = 1200;
+        height = 630;
+        break;
+      default:
+        width = 1200;
+        height = 630;
     }
     
+    // Show loading indicator for this platform
+    const platformPreview = document.getElementById(`${platform}-preview`);
+    const imageContainer = platformPreview.querySelector('.preview-image');
+    imageContainer.innerHTML = '<div class="platform-loading">Generating preview...</div>';
+    
+    // Call the screenshot API
+    const response = await fetch(`/renderSite?url=${encodeURIComponent(generatedData.url)}&width=${width}&height=${height}&platform=${platform}`);
     const data = await response.json();
-    console.log(`Screenshot response:`, data);
     
-    if (!data.success || !data.result || !data.result.screenshotUrl) {
-      throw new Error(`Failed to generate ${platform} screenshot - missing screenshot URL`);
+    if (!data.success || data.error) {
+      throw new Error(data.error || 'Failed to generate screenshot');
     }
-    
-    // Check if the image loads correctly by preloading it
-    const imgPreload = new Image();
-    imgPreload.onload = () => {
-      console.log(`Screenshot for ${platform} loaded successfully`);
-    };
-    imgPreload.onerror = () => {
-      console.error(`Failed to load screenshot image for ${platform}`);
-      // Fall back to a placeholder on error
-      generatedData.screenshots[platform] = `https://via.placeholder.com/${width}x${height}?text=Screenshot+Unavailable`;
-      // Update UI immediately if we're on this platform tab
-      if (document.querySelector(`.tab-btn[data-platform="${platform}"]`).classList.contains('active')) {
-        platformData[platform].image.src = generatedData.screenshots[platform];
-      }
-    };
-    imgPreload.src = data.result.screenshotUrl;
     
     // Store the screenshot URL
     generatedData.screenshots[platform] = data.result.screenshotUrl;
+    
+    // Store the download URL if available
+    if (data.result.downloadUrl) {
+      generatedData.downloadUrls[platform] = data.result.downloadUrl;
+    }
+    
+    // Load the image
+    const img = new Image();
+    let loadingTimeout;
+    
+    const imageLoaded = new Promise((resolve, reject) => {
+      loadingTimeout = setTimeout(() => {
+        reject(new Error('Image loading timed out'));
+      }, 15000); // 15 second timeout
+      
+      img.onload = () => {
+        clearTimeout(loadingTimeout);
+        resolve();
+      };
+      
+      img.onerror = () => {
+        clearTimeout(loadingTimeout);
+        reject(new Error('Failed to load image'));
+      };
+      
+      img.src = data.result.screenshotUrl;
+    });
+    
+    // Wait for the image to load
+    await imageLoaded;
+    
+    // Clear the loading indicator and add the image
+    imageContainer.innerHTML = '';
+    imageContainer.appendChild(img);
+    
+    // Enable download button
+    const downloadBtn = platformPreview.querySelector('.download-btn');
+    downloadBtn.disabled = false;
+    
+    return true;
   } catch (error) {
-    console.error(`Error in generateScreenshot for ${platform}:`, error);
-    // Use a placeholder image instead
-    generatedData.screenshots[platform] = `https://via.placeholder.com/${width}x${height}?text=Screenshot+Unavailable`;
-    throw error;
+    console.error(`Error generating ${platform} screenshot:`, error);
+    
+    // Show error in the platform preview
+    const platformPreview = document.getElementById(`${platform}-preview`);
+    const imageContainer = platformPreview.querySelector('.preview-image');
+    imageContainer.innerHTML = `<div class="preview-error">Failed to generate preview: ${error.message}</div>`;
+    
+    // Use a placeholder image if available
+    try {
+      const placeholderImg = new Image();
+      placeholderImg.src = `/img/${platform}-placeholder.jpg`;
+      placeholderImg.onload = () => {
+        imageContainer.innerHTML = '';
+        imageContainer.appendChild(placeholderImg);
+      };
+    } catch (e) {
+      console.warn('Could not load placeholder image:', e);
+    }
+    
+    return false;
   }
 }
 
 // Update the UI with generated content
 function updateUI() {
-  const { url, metadata, seoContent, screenshots } = generatedData;
+  const { url, title, description, screenshots, seoContent } = generatedData;
   
   // Extract hostname for display
   const hostname = new URL(url).hostname;
@@ -248,11 +296,8 @@ function updateUI() {
         console.error(`Failed to load image for ${platform}`);
         this.src = `https://via.placeholder.com/1200x630?text=Preview+Unavailable`;
       };
-    } else if (metadata && metadata.image) {
-      elements.image.src = metadata.image;
-      elements.image.onerror = function() {
-        this.src = `https://via.placeholder.com/1200x630?text=No+Preview+Available`;
-      };
+    } else if (title && description) {
+      elements.image.src = 'https://via.placeholder.com/1200x630?text=No+Preview+Available';
     } else {
       // Set a placeholder if no image available
       elements.image.src = 'https://via.placeholder.com/1200x630?text=No+Preview+Available';
@@ -263,8 +308,8 @@ function updateUI() {
       elements.title.textContent = seoContent[platform].title;
       elements.description.textContent = seoContent[platform].description;
     } else {
-      elements.title.textContent = metadata ? metadata.title : 'No title available';
-      elements.description.textContent = metadata ? metadata.description : 'No description available';
+      elements.title.textContent = title || 'No title available';
+      elements.description.textContent = description || 'No description available';
     }
     
     elements.url.textContent = hostname;
@@ -274,7 +319,7 @@ function updateUI() {
 // Switch between platform tabs
 function switchTab(platform) {
   // Update active tab button
-  tabButtons.forEach(button => {
+  platformButtons.forEach(button => {
     if (button.dataset.platform === platform) {
       button.classList.add('active');
     } else {
@@ -327,6 +372,23 @@ function copyText(platform) {
 
 // Download the preview image
 function downloadImage(platform) {
+  // First check if we have a dedicated download URL (from cloud storage)
+  const downloadUrl = generatedData.downloadUrls[platform];
+  if (downloadUrl) {
+    // Create an invisible anchor element
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${platform}-preview-${new Date().getTime()}.jpg`;
+    a.style.display = 'none';
+    
+    // Add it to the DOM, click it, then remove it
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+  
+  // Fall back to base64 if no download URL is available
   const screenshotUrl = generatedData.screenshots[platform];
   
   if (!screenshotUrl) {

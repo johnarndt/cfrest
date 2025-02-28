@@ -21,15 +21,18 @@ compatibility_flags = ["nodejs_compat"]
 # CLOUDFLARE_ACCOUNT_ID = ""
 # GROQ_API_KEY = ""
 
-# Define routes for your Cloudflare Functions
-[[routes]]
-pattern = "/renderSite"
-script = "functions/renderSite.js"
+# Configure Cloudflare Pages route handling
+# This matches our functions/routes.json
+[routes]
+pattern = "/*"
+script = "routes"
 
-[[routes]]
-pattern = "/generateSEO"
-script = "functions/generateSEO.js"
+# Configure caching for our application
+[cache]
+# Cache content for 24 hours by default
+default_cache_duration = "24h"
 
-[[routes]]
-pattern = "/fetchMetadata"
-script = "functions/fetchMetadata.js"
+# Enable Workers functionality
+[workers]
+max_upload_size = "10MB"
+max_simultaneous_requests = 5
